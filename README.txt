@@ -17,3 +17,7 @@ Cómo ejecutarlo
 
 jarvis.py es el esqueleto: define nuevas tools (funciones Python + esquema
 JSON) en TOOLS/TOOL_FUNCTIONS para ir ampliando lo que Jarvis sabe hacer.
+
+
+------ ULTIMO PASO REALIZADO ---- 
+los scripts de la terminal no me van "pip install -r requirements.txt", tengo que ver como hacer que se instalen las cosas que me han pedido
