@@ -6,6 +6,30 @@ Decir el tiempo y la hora de la ubicación pedida, buscar información en
 internet y resolver problemas básicos de matemáticas.
 
 
+ÚLTIMO CAMBIO (resumen rápido)
+-------------------------------
+
+Al principio Jarvis usaba la IA de Claude, pero esa API es de pago. Como
+esto es un proyecto para aprender, lo hemos cambiado a Gemini (de Google),
+que es gratis. Así puedes trastear sin gastar ni un euro.
+
+
+DÓNDE LO DEJASTE / QUÉ FALTA POR HACER
+-----------------------------------------
+
+Pendiente de hacer la próxima vez que retomes esto:
+
+  [ ] 1. Actualizar la carpeta:      git pull
+  [ ] 2. Instalar lo nuevo:          pip install -r requirements.txt
+  [ ] 3. Sacar tu clave gratis en:   https://aistudio.google.com/apikey
+  [ ] 4. Ponerla en la terminal:     $env:GEMINI_API_KEY="tu-clave"
+  [ ] 5. Arrancar Jarvis:            python jarvis.py
+  [ ] 6. Probarlo y contarle a Claude cómo ha ido
+
+Todos los detalles de cada paso están más abajo, en "CÓMO PONERLO EN
+MARCHA".
+
+
 FICHEROS DEL PROYECTO
 ---------------------
 
