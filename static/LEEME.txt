@@ -1,0 +1,16 @@
+AQUÍ VA LA IMAGEN DE JOKER
+===========================
+
+Guarda en esta carpeta la imagen del diablillo con el nombre exacto:
+
+    joker.png
+
+Es decir, la ruta completa debe quedar así:
+
+    static/joker.png
+
+La página la busca ahí automáticamente. Si el archivo no está, en su lugar
+sale un emoji de comodín (🃏) para que la web siga funcionando igual.
+
+Formatos: PNG con fondo transparente es lo ideal. También vale .jpg, pero
+entonces hay que cambiar el nombre en templates/index.html (busca "joker.png").

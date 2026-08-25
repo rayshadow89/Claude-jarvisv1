@@ -1,57 +1,61 @@
-READ ME
+JOKER
+"La última carta del mazo"
 
-que hará mi jarvis.v1
 
-Decir el tiempo y la hora de la ubicación pedida, buscar información en
-internet y resolver problemas básicos de matemáticas.
+QUÉ HACE
+--------
+
+Un asistente personal que dice la hora y el tiempo de cualquier lugar del
+mundo, busca información y resuelve problemas de matemáticas.
+
+Se puede usar de dos formas:
+  - Desde una página web con interfaz de chat  ->  python app.py
+  - Desde la terminal, sin adornos             ->  python joker.py
 
 
 ÚLTIMO CAMBIO (resumen rápido)
 -------------------------------
 
-Primero probamos con Claude (de pago) y luego con Gemini (Google), que
-decía ser gratis pero fue dando problemas: modelos que dejaban de
-funcionar, avisos de facturación, cambios de un día para otro. Así que
-hemos cambiado a Groq, que también es gratis pero de forma estable: sin
-tarjeta, sin sorpresas, sin "actualízate o paga".
-
-jarvis.py ahora usa Groq. Las versiones anteriores (jarvis_gemini.py,
-jarvis_claude.py) se han dejado como referencia por si algún día quieres
-comparar o volver a probarlas.
+El proyecto se llamaba Jarvis y ahora se llama JOKER. Además de cambiarle
+el nombre a todo, ahora tiene una PÁGINA WEB con colores burdeos y negros,
+en vez de tener que hablar con él desde la ventana negra de la terminal.
 
 
 DÓNDE LO DEJASTE / QUÉ FALTA POR HACER
 -----------------------------------------
 
-Pendiente de hacer la próxima vez que retomes esto:
-
   [ ] 1. Actualizar la carpeta:      git pull
   [ ] 2. Instalar lo nuevo:          pip install -r requirements.txt
-  [ ] 3. Sacar tu clave gratis en:   https://console.groq.com/keys
-  [ ] 4. Ponerla en la terminal:     $env:GROQ_API_KEY="tu-clave"
-  [ ] 5. Arrancar Jarvis:            python jarvis.py
-  [ ] 6. Probarlo y contarle a Claude cómo ha ido
-
-Todos los detalles de cada paso están más abajo, en "CÓMO PONERLO EN
-MARCHA".
+  [ ] 3. Guardar la imagen del diablillo como:   static/joker.png
+         (es lo único que no puedo hacer yo; sin ella sale un 🃏 en su sitio)
+  [ ] 4. Poner la clave:             $env:GROQ_API_KEY="tu-clave"
+  [ ] 5. Arrancar la web:            python app.py
+  [ ] 6. Abrir en el navegador:      http://127.0.0.1:5000
 
 
 FICHEROS DEL PROYECTO
 ---------------------
 
-  jarvis.py         El asistente, por defecto. Usa Groq -> GRATIS y estable.
-  jarvis_gemini.py  La misma idea con Gemini (Google). Referencia: dio
+  app.py            El servidor de la página web. Es lo que ejecutas para
+                    usar JOKER desde el navegador.
+  templates/        El diseño de la página web (index.html).
+  static/           Imágenes. Aquí va joker.png.
+
+  joker.py          El asistente en versión terminal. Contiene el "motor"
+                    (el loop que habla con la IA), que la web reutiliza.
+  tools.py          Las habilidades de JOKER: hora, clima, matemáticas y
+                    búsqueda. No depende de ningún proveedor de IA.
+
+  joker_gemini.py   La misma idea con Gemini (Google). Referencia: dio
                     problemas de facturación, puede que no funcione ya.
-  jarvis_claude.py  La misma idea con Claude (Anthropic) -> DE PAGO.
+  joker_claude.py   La misma idea con Claude (Anthropic) -> DE PAGO.
                     Está aquí solo como referencia/comparación.
-  tools.py          Las habilidades de Jarvis (hora, clima, matemáticas,
-                    búsqueda web). No depende de ningún proveedor, la
-                    comparten las tres versiones.
+
   requirements.txt  Las librerías que hay que instalar.
 
 
-CÓMO PONERLO EN MARCHA (versión por defecto, con Groq)
----------------------------------------------------------
+CÓMO PONERLO EN MARCHA
+-----------------------
 
 1. Instala las dependencias, desde esta misma carpeta:
 
@@ -61,9 +65,8 @@ CÓMO PONERLO EN MARCHA (versión por defecto, con Groq)
 
      https://console.groq.com/keys
 
-   Es gratis, sin tarjeta, y no tiene fecha de caducidad conocida (a
-   diferencia de lo que nos pasó con Gemini). Tiene límites de peticiones
-   por minuto y por día, de sobra para trastear.
+   Es gratis y sin tarjeta. Tiene límites de peticiones por minuto y por
+   día, de sobra para uso personal.
 
 3. Configura la clave en la terminal (dura hasta que cierres la ventana):
 
@@ -76,17 +79,29 @@ CÓMO PONERLO EN MARCHA (versión por defecto, con Groq)
 
      GROQ_API_KEY=tu-clave
 
-4. Arranca Jarvis:
+4. Arranca la página web:
 
-     python jarvis.py
+     python app.py
+
+   Deja esa ventana abierta (es el servidor) y abre en el navegador:
+
+     http://127.0.0.1:5000
+
+   Para pararlo, pulsa Ctrl+C en la ventana de la terminal.
 
 5. Pruébalo:
 
-     ¿qué hora es en Tokio?
-     cuánto es (45 * 8) / 3
-     busca información sobre el Real Madrid
+     ¿Qué hora es en Tokio?
+     Cuánto es (45 * 8) / 3
+     Busca información sobre Nikola Tesla
 
-   Escribe 'salir' para terminar.
+
+LA IMAGEN DE JOKER
+-------------------
+
+Guarda la imagen del diablillo en la carpeta "static" con el nombre exacto
+joker.png. La página la busca ahí sola. Si no está, sale un 🃏 en su lugar
+y todo lo demás funciona igual.
 
 
 CLIMA (opcional)
@@ -119,6 +134,17 @@ Todo se hace en tools.py, en tres pasos:
   2. Añade su descripción y sus parámetros a la lista TOOL_SCHEMAS.
   3. Regístrala en el diccionario TOOL_FUNCTIONS.
 
+La habilidad nueva aparece automáticamente tanto en la web como en la
+terminal, sin tocar nada más.
+
 El modelo decide solo cuándo llamarla, basándose en la descripción que le
 escribas. Cuanto más claro digas CUÁNDO debe usarse (no solo qué hace),
 mejor acertará.
+
+
+NOTA SOBRE EL HISTORIAL DE CONVERSACIÓN
+-----------------------------------------
+
+Las conversaciones de la web se guardan en la memoria del servidor, así que
+se borran al cerrar la ventana donde ejecutaste "python app.py". El botón
+"Nueva partida" las borra a mano cuando quieras empezar de cero.

@@ -1,12 +1,12 @@
 """
-Tools de Jarvis — la "lógica" real del asistente.
+Tools de JOKER — la "lógica" real del asistente.
 ==================================================
 
 Este módulo no sabe nada de Groq, Gemini ni Claude: son funciones de Python
-normales y corrientes. Eso permite que jarvis.py (Groq), jarvis_gemini.py y
-jarvis_claude.py compartan exactamente las mismas capacidades.
+normales y corrientes. Eso permite que joker.py (Groq), joker_gemini.py y
+joker_claude.py compartan exactamente las mismas capacidades.
 
-Para añadirle una habilidad nueva a Jarvis:
+Para añadirle una habilidad nueva a JOKER:
   1. Escribe la función aquí abajo.
   2. Añade su esquema a TOOL_SCHEMAS.
   3. Regístrala en TOOL_FUNCTIONS.
@@ -19,8 +19,9 @@ import ast
 import math
 import operator
 import os
+import unicodedata
 from datetime import datetime
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 
 class ToolError(Exception):
@@ -37,45 +38,206 @@ MESES = [
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ]
 
+# Nombres en español que no coinciden con el nombre de la zona horaria oficial
+# (que siempre está en inglés). Ej: la zona de Tokio se llama "Asia/Tokyo".
+_ALIAS_CIUDADES = {
+    "tokio": "tokyo",
+    "londres": "london",
+    "nueva_york": "new_york",
+    "moscu": "moscow",
+    "roma": "rome",
+    "atenas": "athens",
+    "lisboa": "lisbon",
+    "copenhague": "copenhagen",
+    "estocolmo": "stockholm",
+    "varsovia": "warsaw",
+    "praga": "prague",
+    "viena": "vienna",
+    "bruselas": "brussels",
+    "bucarest": "bucharest",
+    "el_cairo": "cairo",
+    "argel": "algiers",
+    "tunez": "tunis",
+    "singapur": "singapore",
+    "sidney": "sydney",
+    "ciudad_de_mexico": "mexico_city",
+    "la_habana": "havana",
+    "pekin": "shanghai",
+    "shangai": "shanghai",
+    "seul": "seoul",
+    "estambul": "istanbul",
+}
 
-def get_datetime(location: str) -> str:
-    """
-    Devuelve la fecha y hora actual de cualquier ciudad del mundo.
+# Países -> zona horaria de su capital, para cuando se pregunta por el país.
+_ALIAS_PAISES = {
+    "espana": "Europe/Madrid",
+    "portugal": "Europe/Lisbon",
+    "francia": "Europe/Paris",
+    "italia": "Europe/Rome",
+    "alemania": "Europe/Berlin",
+    "reino_unido": "Europe/London",
+    "inglaterra": "Europe/London",
+    "irlanda": "Europe/Dublin",
+    "paises_bajos": "Europe/Amsterdam",
+    "holanda": "Europe/Amsterdam",
+    "belgica": "Europe/Brussels",
+    "suiza": "Europe/Zurich",
+    "austria": "Europe/Vienna",
+    "grecia": "Europe/Athens",
+    "polonia": "Europe/Warsaw",
+    "suecia": "Europe/Stockholm",
+    "noruega": "Europe/Oslo",
+    "dinamarca": "Europe/Copenhagen",
+    "finlandia": "Europe/Helsinki",
+    "rusia": "Europe/Moscow",
+    "turquia": "Europe/Istanbul",
+    "marruecos": "Africa/Casablanca",
+    "egipto": "Africa/Cairo",
+    "sudafrica": "Africa/Johannesburg",
+    "nigeria": "Africa/Lagos",
+    "japon": "Asia/Tokyo",
+    "china": "Asia/Shanghai",
+    "corea_del_sur": "Asia/Seoul",
+    "india": "Asia/Kolkata",
+    "tailandia": "Asia/Bangkok",
+    "indonesia": "Asia/Jakarta",
+    "australia": "Australia/Sydney",
+    "nueva_zelanda": "Pacific/Auckland",
+    "mexico": "America/Mexico_City",
+    "cuba": "America/Havana",
+    "argentina": "America/Argentina/Buenos_Aires",
+    "colombia": "America/Bogota",
+    "peru": "America/Lima",
+    "chile": "America/Santiago",
+    "brasil": "America/Sao_Paulo",
+    "uruguay": "America/Montevideo",
+    "venezuela": "America/Caracas",
+    "ecuador": "America/Guayaquil",
+    "bolivia": "America/La_Paz",
+    "paraguay": "America/Asuncion",
+    "canada": "America/Toronto",
+    "estados_unidos": "America/New_York",
+    "eeuu": "America/New_York",
+}
 
-    Usa la API de geocodificación de Open-Meteo (gratis, sin clave) para
-    encontrar la ciudad y su zona horaria, y luego calcula la hora local
-    con la librería estándar de Python.
+
+def _normalizar(texto: str) -> str:
+    """Quita acentos, pasa a minúsculas y cambia espacios por guiones bajos."""
+    sin_acentos = "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
+    return sin_acentos.strip().lower().replace(" ", "_")
+
+
+def _zona_sin_internet(nombre: str) -> str | None:
     """
-    import requests
+    Intenta resolver la zona horaria sin salir a internet, comparando con la
+    lista de zonas que trae Python (Europe/Madrid, Asia/Tokyo, etc.).
+    Cubre las ciudades principales del mundo y es instantáneo.
+    """
+    clave = _normalizar(nombre)
+
+    if clave in _ALIAS_PAISES:
+        return _ALIAS_PAISES[clave]
+
+    clave = _ALIAS_CIUDADES.get(clave, clave)
 
     try:
+        zonas = available_timezones()
+    except Exception:
+        return None
+
+    for zona in zonas:
+        if zona.split("/")[-1].lower() == clave:
+            return zona
+    return None
+
+
+def _buscar_ubicacion(query: str) -> dict | None:
+    """Busca una ubicación con la API de Open-Meteo. Devuelve el mejor resultado o None."""
+    import requests
+
+    for idioma in ("es", "en"):  # algunos nombres solo se resuelven bien en inglés
         resp = requests.get(
             "https://geocoding-api.open-meteo.com/v1/search",
-            params={"name": location, "count": 1, "language": "es", "format": "json"},
+            params={"name": query, "count": 1, "language": idioma, "format": "json"},
             timeout=10,
         )
         resp.raise_for_status()
-    except requests.RequestException as e:
-        raise ToolError(f"Error de red al buscar '{location}': {e}") from e
+        resultados = resp.json().get("results")
+        if resultados:
+            return resultados[0]
+    return None
 
-    resultados = resp.json().get("results")
-    if not resultados:
-        raise ToolError(f"No encontré ninguna ubicación llamada '{location}'.")
 
-    lugar = resultados[0]
-    tz_name = lugar.get("timezone")
+def get_datetime(location: str) -> str:
+    """
+    Devuelve la fecha y hora actual de cualquier ciudad o país del mundo.
+
+    Lo intenta en dos fases:
+      1. Sin internet, comparando con las zonas horarias que trae Python.
+         Cubre las ciudades y países principales y es instantáneo.
+      2. Si no la encuentra, busca la ubicación en la API de Open-Meteo
+         (gratis, sin clave), que conoce hasta pueblos pequeños.
+    """
+    location = location.strip()
+
+    # El modelo a veces manda "Ciudad, País" (ej. "Madrid, España"). Probamos
+    # la cadena completa y también solo el trozo antes de la coma.
+    intentos = [location]
+    if "," in location:
+        intentos.append(location.split(",", 1)[0].strip())
+
+    tz_name = None
+    nombre_bonito = location
+
+    # Fase 1: sin internet
+    for query in intentos:
+        tz_name = _zona_sin_internet(query)
+        if tz_name:
+            nombre_bonito = query
+            break
+
+    # Fase 2: buscando en internet
     if not tz_name:
-        raise ToolError(f"Encontré '{location}' pero no tengo su zona horaria.")
+        error_red = None
+        for query in intentos:
+            try:
+                lugar = _buscar_ubicacion(query)
+            except Exception as e:  # fallo de red, timeout, respuesta rara...
+                error_red = e
+                continue
+            if lugar and lugar.get("timezone"):
+                tz_name = lugar["timezone"]
+                pais = lugar.get("country")
+                nombre = lugar.get("name", query)
+                nombre_bonito = f"{nombre}, {pais}" if pais else nombre
+                break
 
-    ahora = datetime.now(ZoneInfo(tz_name))
+        if not tz_name:
+            if error_red is not None:
+                raise ToolError(
+                    f"No pude consultar el servicio de ubicaciones para '{location}' "
+                    f"(problema de red: {error_red})."
+                )
+            raise ToolError(f"No encontré ninguna ubicación llamada '{location}'.")
+
+    try:
+        ahora = datetime.now(ZoneInfo(tz_name))
+    except ZoneInfoNotFoundError as e:
+        # Pasa en Windows, que no trae la base de datos de zonas horarias.
+        raise ToolError(
+            "Falta la base de datos de zonas horarias del mundo (Windows no la "
+            "incluye de serie). Se arregla ejecutando en la terminal:  "
+            "pip install tzdata"
+        ) from e
+
     dia = DIAS[ahora.weekday()]
     mes = MESES[ahora.month - 1]
 
-    pais = lugar.get("country")
-    nombre = f"{lugar.get('name', location)}, {pais}" if pais else lugar.get("name", location)
-
     return (
-        f"En {nombre} son las {ahora:%H:%M} del {dia} "
+        f"En {nombre_bonito} son las {ahora:%H:%M} del {dia} "
         f"{ahora.day} de {mes} de {ahora.year} ({tz_name})."
     )
 
@@ -190,7 +352,7 @@ def search_web(query: str, lang: str = "es") -> str:
                 "format": "json", "srlimit": 1,
             },
             timeout=10,
-            headers={"User-Agent": "Jarvis-v1-proyecto-personal"},
+            headers={"User-Agent": "JOKER-v1-proyecto-personal"},
         )
         busqueda.raise_for_status()
     except requests.RequestException as e:
@@ -210,7 +372,7 @@ def search_web(query: str, lang: str = "es") -> str:
                 "explaintext": True, "format": "json", "titles": titulo,
             },
             timeout=10,
-            headers={"User-Agent": "Jarvis-v1-proyecto-personal"},
+            headers={"User-Agent": "JOKER-v1-proyecto-personal"},
         )
         extracto.raise_for_status()
     except requests.RequestException as e:

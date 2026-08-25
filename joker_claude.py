@@ -1,10 +1,10 @@
 """
-Jarvis v1 — versión con la API de Claude (Anthropic)
+JOKER v1 — versión con la API de Claude (Anthropic)
 =====================================================
 
 OJO: esta versión es DE PAGO. La API de Anthropic se factura por uso y va
 aparte de la suscripción de Claude.ai. La versión que se usa por defecto en
-este proyecto es jarvis.py, que funciona con la capa gratuita de Gemini.
+este proyecto es joker.py, que funciona con la capa gratuita de Gemini.
 
 Este fichero se mantiene por dos motivos:
   - Sirve de comparación: el loop agéntico es el mismo concepto, cambia
@@ -17,7 +17,7 @@ Configuración:
 
 Ejecutar:
   pip install anthropic
-  python jarvis_claude.py
+  python joker_claude.py
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ MODEL = "claude-opus-5"
 MAX_TOKENS = 16000
 MAX_ITERACIONES = 8
 
-SYSTEM_PROMPT = """Eres Jarvis, un asistente personal conversacional.
+SYSTEM_PROMPT = """Eres JOKER, un asistente personal conversacional.
 Eres cercano, directo y eficiente.
 
 Cuando el usuario pregunte la hora o el clima de un lugar, o pida un cálculo
@@ -127,7 +127,7 @@ def run_turn(client: anthropic.Anthropic, messages: list, tool_defs: list):
         messages.append({"role": "user", "content": resultados})
 
     raise RuntimeError(
-        f"Jarvis se ha quedado dando vueltas ({MAX_ITERACIONES} iteraciones)."
+        f"JOKER se ha quedado dando vueltas ({MAX_ITERACIONES} iteraciones)."
     )
 
 
@@ -144,7 +144,7 @@ def main() -> None:
         print(
             "ERROR: falta ANTHROPIC_API_KEY.\n"
             "Consigue una en https://console.anthropic.com (necesita saldo).\n"
-            "Si prefieres la opción gratuita, ejecuta jarvis.py en su lugar.",
+            "Si prefieres la opción gratuita, ejecuta joker.py en su lugar.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -153,7 +153,7 @@ def main() -> None:
     tool_defs = construir_tools()
     messages: list = []
 
-    print("Jarvis (Claude) listo. Escribe 'salir' para terminar.\n")
+    print("JOKER (Claude) listo. Escribe 'salir' para terminar.\n")
 
     while True:
         try:
@@ -173,27 +173,27 @@ def main() -> None:
         try:
             response = run_turn(client, messages, tool_defs)
         except anthropic.AuthenticationError:
-            print("Jarvis: La clave de API no es válida.\n")
+            print("JOKER: La clave de API no es válida.\n")
             break
         except anthropic.RateLimitError as e:
             espera = e.response.headers.get("retry-after", "unos segundos")
-            print(f"Jarvis: Rate limit alcanzado, reinténtalo en {espera}.\n")
+            print(f"JOKER: Rate limit alcanzado, reinténtalo en {espera}.\n")
             continue
         except anthropic.APIConnectionError:
-            print("Jarvis: No pude conectar con la API. Revisa tu conexión.\n")
+            print("JOKER: No pude conectar con la API. Revisa tu conexión.\n")
             continue
         except anthropic.APIStatusError as e:
-            print(f"Jarvis: Error de la API ({e.status_code}): {e.message}\n")
+            print(f"JOKER: Error de la API ({e.status_code}): {e.message}\n")
             continue
         except RuntimeError as e:
-            print(f"Jarvis: {e}\n")
+            print(f"JOKER: {e}\n")
             continue
 
         if response.stop_reason == "refusal":
-            print("Jarvis: Prefiero no responder a eso.\n")
+            print("JOKER: Prefiero no responder a eso.\n")
             continue
 
-        print(f"Jarvis: {extraer_texto(response)}\n")
+        print(f"JOKER: {extraer_texto(response)}\n")
 
 
 if __name__ == "__main__":
