@@ -38,6 +38,23 @@ MESES = [
 ]
 
 
+def _buscar_ubicacion(query: str) -> dict | None:
+    """Une una consulta a la API de Open-Meteo. Devuelve el mejor resultado o None."""
+    import requests
+
+    for idioma in ("es", "en"):  # algunos nombres solo se resuelven bien en inglés
+        resp = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": query, "count": 1, "language": idioma, "format": "json"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        resultados = resp.json().get("results")
+        if resultados:
+            return resultados[0]
+    return None
+
+
 def get_datetime(location: str) -> str:
     """
     Devuelve la fecha y hora actual de cualquier ciudad del mundo.
@@ -46,23 +63,31 @@ def get_datetime(location: str) -> str:
     encontrar la ciudad y su zona horaria, y luego calcula la hora local
     con la librería estándar de Python.
     """
-    import requests
+    location = location.strip()
 
-    try:
-        resp = requests.get(
-            "https://geocoding-api.open-meteo.com/v1/search",
-            params={"name": location, "count": 1, "language": "es", "format": "json"},
-            timeout=10,
-        )
-        resp.raise_for_status()
-    except requests.RequestException as e:
-        raise ToolError(f"Error de red al buscar '{location}': {e}") from e
+    # El modelo a veces manda "Ciudad, País" (ej. "Madrid, España"), y esa
+    # cadena completa no siempre encaja con el buscador. Probamos primero
+    # tal cual, y si falla, solo con el trozo antes de la coma.
+    intentos = [location]
+    if "," in location:
+        intentos.append(location.split(",", 1)[0].strip())
 
-    resultados = resp.json().get("results")
-    if not resultados:
+    lugar = None
+    error_red = None
+    for query in intentos:
+        try:
+            lugar = _buscar_ubicacion(query)
+        except Exception as e:  # fallo de red, timeout, respuesta rara...
+            error_red = e
+            continue
+        if lugar:
+            break
+
+    if lugar is None:
+        if error_red is not None:
+            raise ToolError(f"Error de red al buscar '{location}': {error_red}")
         raise ToolError(f"No encontré ninguna ubicación llamada '{location}'.")
 
-    lugar = resultados[0]
     tz_name = lugar.get("timezone")
     if not tz_name:
         raise ToolError(f"Encontré '{location}' pero no tengo su zona horaria.")
