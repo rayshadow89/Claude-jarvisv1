@@ -1,11 +1,11 @@
 """
-Jarvis v1 — asistente personal con function calling (Groq)
+JOKER v1 — asistente personal con function calling (Groq)
 =============================================================
 
-Esta es la versión por defecto de Jarvis. Usa Groq, que aloja modelos de
+Esta es la versión por defecto de JOKER. Usa Groq, que aloja modelos de
 código abierto y tiene un plan gratuito estable de verdad: sin tarjeta,
 sin facturación oculta, sin "esto ya no es gratis, actualízate a la versión
-nueva" (que es justo lo que nos pasó con Gemini — ver jarvis_gemini.py).
+nueva" (que es justo lo que nos pasó con Gemini — ver joker_gemini.py).
 
 Groq es compatible con el formato de OpenAI, así que usamos la librería
 `openai` apuntando a los servidores de Groq en vez de a los de OpenAI.
@@ -26,7 +26,7 @@ Configuración:
 
 Ejecutar:
   pip install -r requirements.txt
-  python jarvis.py
+  python joker.py
 """
 
 from __future__ import annotations
@@ -63,13 +63,13 @@ MODEL = "openai/gpt-oss-120b"
 # pidiendo tools en bucle si algo va mal.
 MAX_ITERACIONES = 8
 
-# Por defecto la terminal se queda limpia (solo "Tú:" y "Jarvis:"). Si quieres
+# Por defecto la terminal se queda limpia (solo "Tú:" y "JOKER:"). Si quieres
 # ver qué tool está llamando por dentro y con qué argumentos, arranca así:
-#   Windows PowerShell:  $env:JARVIS_DEBUG="1"; python jarvis.py
-#   Mac / Linux:         JARVIS_DEBUG=1 python jarvis.py
-DEBUG = os.environ.get("JARVIS_DEBUG") == "1"
+#   Windows PowerShell:  $env:JOKER_DEBUG="1"; python joker.py
+#   Mac / Linux:         JOKER_DEBUG=1 python joker.py
+DEBUG = os.environ.get("JOKER_DEBUG") == "1"
 
-SYSTEM_PROMPT = """Eres Jarvis, un asistente personal conversacional.
+SYSTEM_PROMPT = """Eres JOKER, un asistente personal conversacional.
 Eres cercano, directo y eficiente.
 
 Cuando el usuario pregunte la hora o el clima de un lugar, pida un cálculo
@@ -143,36 +143,47 @@ def run_turn(client: OpenAI, messages: list, tool_defs: list):
             })
 
     raise RuntimeError(
-        f"Jarvis se ha quedado dando vueltas ({MAX_ITERACIONES} iteraciones). "
+        f"JOKER se ha quedado dando vueltas ({MAX_ITERACIONES} iteraciones). "
         "Puede que una tool esté fallando en bucle."
     )
 
 
 # ---------------------------------------------------------------------------
-# Programa principal
+# Creación del cliente (lo comparten la terminal y la web)
+# ---------------------------------------------------------------------------
+
+FALTA_CLAVE = (
+    "Falta la clave de la API.\n\n"
+    "1. Consigue una gratis en https://console.groq.com/keys\n"
+    "2. Configúrala en esta misma terminal:\n\n"
+    '     Windows PowerShell:  $env:GROQ_API_KEY="tu-clave"\n'
+    "     Windows cmd:         set GROQ_API_KEY=tu-clave\n"
+    '     Mac / Linux:         export GROQ_API_KEY="tu-clave"'
+)
+
+
+def crear_cliente() -> OpenAI:
+    """Crea el cliente apuntando a Groq. Lanza RuntimeError si falta la clave."""
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError(FALTA_CLAVE)
+    return OpenAI(base_url="https://api.groq.com/openai/v1", api_key=api_key)
+
+
+# ---------------------------------------------------------------------------
+# Programa principal (versión terminal)
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    if not os.environ.get("GROQ_API_KEY"):
-        print(
-            "ERROR: falta la clave de la API.\n\n"
-            "1. Consigue una gratis en https://console.groq.com/keys\n"
-            "2. Configúrala en esta misma terminal:\n\n"
-            '     Windows PowerShell:  $env:GROQ_API_KEY="tu-clave"\n'
-            "     Windows cmd:         set GROQ_API_KEY=tu-clave\n"
-            '     Mac / Linux:         export GROQ_API_KEY="tu-clave"\n',
-            file=sys.stderr,
-        )
+    try:
+        client = crear_cliente()
+    except RuntimeError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
-
-    client = OpenAI(
-        base_url="https://api.groq.com/openai/v1",
-        api_key=os.environ["GROQ_API_KEY"],
-    )
     tool_defs = construir_tools()
     messages: list = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-    print("Jarvis listo. Escribe 'salir' para terminar.\n")
+    print("JOKER listo. Escribe 'salir' para terminar.\n")
 
     while True:
         try:
@@ -192,23 +203,23 @@ def main() -> None:
         try:
             mensaje = run_turn(client, messages, tool_defs)
         except openai.AuthenticationError:
-            print("Jarvis: La clave de API no es válida. Revisa GROQ_API_KEY.\n")
+            print("JOKER: La clave de API no es válida. Revisa GROQ_API_KEY.\n")
             break
         except openai.RateLimitError:
-            print("Jarvis: He llegado al límite de peticiones gratuitas por ahora. "
+            print("JOKER: He llegado al límite de peticiones gratuitas por ahora. "
                   "Espera un minuto y vuelve a intentarlo.\n")
             continue
         except openai.APIConnectionError:
-            print("Jarvis: No pude conectar con la API. Revisa tu conexión.\n")
+            print("JOKER: No pude conectar con la API. Revisa tu conexión.\n")
             continue
         except openai.APIStatusError as e:
-            print(f"Jarvis: Error de la API ({e.status_code}): {e.message}\n")
+            print(f"JOKER: Error de la API ({e.status_code}): {e.message}\n")
             continue
         except RuntimeError as e:
-            print(f"Jarvis: {e}\n")
+            print(f"JOKER: {e}\n")
             continue
 
-        print(f"Jarvis: {mensaje.content or '(no he sabido qué responder)'}\n")
+        print(f"JOKER: {mensaje.content or '(no he sabido qué responder)'}\n")
 
 
 if __name__ == "__main__":

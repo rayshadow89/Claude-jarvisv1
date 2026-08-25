@@ -1,16 +1,18 @@
-# Dependencias de Jarvis v1
+# Dependencias de JOKER v1
 # Instalar con:  pip install -r requirements.txt
 
-# --- Necesarias para jarvis.py (versión por defecto, con Groq) ---
+# --- Necesarias para joker.py (versión por defecto, con Groq) ---
 openai>=1.50.0
 requests>=2.31.0
 python-dotenv>=1.0.0
 # Base de datos de zonas horarias del mundo. Linux y Mac la traen en el
 # sistema, pero Windows NO — sin esto, la hora falla en todas las ciudades.
 tzdata>=2024.1
+# Servidor web, para la página de app.py
+flask>=3.0.0
 
 # --- Solo si quieres probar las otras versiones (guardadas como referencia) ---
-# jarvis_gemini.py -> descomenta:
+# joker_gemini.py -> descomenta:
 # google-genai>=1.0.0
-# jarvis_claude.py -> descomenta:
+# joker_claude.py -> descomenta:
 # anthropic>=0.69.0

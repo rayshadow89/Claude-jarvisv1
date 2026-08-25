@@ -1,11 +1,11 @@
 """
-Jarvis v1 — versión con la API de Gemini (Google)
+JOKER v1 — versión con la API de Gemini (Google)
 ====================================================
 
 AVISO: Google ha ido cambiando varias veces qué modelos de Gemini son
 gratis y cuáles requieren un proyecto con facturación, así que esta
 versión puede dejar de funcionar sin avisar. La versión que se usa por
-defecto en este proyecto es jarvis.py, que usa Groq — gratis de forma
+defecto en este proyecto es joker.py, que usa Groq — gratis de forma
 estable, sin tarjeta y sin sorpresas.
 
 Este fichero se mantiene como referencia, por si Google mejora las cosas
@@ -27,7 +27,7 @@ Configuración:
 
 Ejecutar:
   pip install google-genai requests python-dotenv
-  python jarvis_gemini.py
+  python joker_gemini.py
 """
 
 from __future__ import annotations
@@ -65,10 +65,10 @@ MAX_ITERACIONES = 8
 
 # Búsqueda en internet mediante Google Search, integrada en Gemini (no requiere
 # código nuestro). Si tu modelo diera error al combinarla con tools propias,
-# pon esto a False y Jarvis seguirá funcionando sin buscar en internet.
+# pon esto a False y JOKER seguirá funcionando sin buscar en internet.
 USAR_BUSQUEDA_WEB = True
 
-SYSTEM_PROMPT = """Eres Jarvis, un asistente personal conversacional.
+SYSTEM_PROMPT = """Eres JOKER, un asistente personal conversacional.
 Eres cercano, directo y eficiente.
 
 Cuando el usuario pregunte la hora o el clima de un lugar, o pida un cálculo
@@ -156,7 +156,7 @@ def run_turn(client: genai.Client, contents: list, config: types.GenerateContent
         contents.append(types.Content(role="tool", parts=partes))
 
     raise RuntimeError(
-        f"Jarvis se ha quedado dando vueltas ({MAX_ITERACIONES} iteraciones). "
+        f"JOKER se ha quedado dando vueltas ({MAX_ITERACIONES} iteraciones). "
         "Puede que una tool esté fallando en bucle."
     )
 
@@ -199,7 +199,7 @@ def main() -> None:
 
     contents: list = []  # historial completo de la conversación
 
-    print("Jarvis listo. Escribe 'salir' para terminar.\n")
+    print("JOKER listo. Escribe 'salir' para terminar.\n")
 
     while True:
         try:
@@ -220,20 +220,20 @@ def main() -> None:
             response = run_turn(client, contents, config)
         except errors.ClientError as e:
             # 429 = has agotado la cuota gratuita por ahora; 400 = petición mal formada
-            print(f"Jarvis: Error de la API ({e.code}): {e.message}\n")
+            print(f"JOKER: Error de la API ({e.code}): {e.message}\n")
             continue
         except errors.ServerError as e:
-            print(f"Jarvis: Google está teniendo problemas ({e.code}). Reinténtalo.\n")
+            print(f"JOKER: Google está teniendo problemas ({e.code}). Reinténtalo.\n")
             continue
         except errors.APIError as e:
-            print(f"Jarvis: Error con la API: {e}\n")
+            print(f"JOKER: Error con la API: {e}\n")
             continue
         except RuntimeError as e:
-            print(f"Jarvis: {e}\n")
+            print(f"JOKER: {e}\n")
             continue
 
         texto = extraer_texto(response)
-        print(f"Jarvis: {texto if texto else '(no he sabido qué responder)'}\n")
+        print(f"JOKER: {texto if texto else '(no he sabido qué responder)'}\n")
 
 
 if __name__ == "__main__":

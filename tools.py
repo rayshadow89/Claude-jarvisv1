@@ -1,12 +1,12 @@
 """
-Tools de Jarvis — la "lógica" real del asistente.
+Tools de JOKER — la "lógica" real del asistente.
 ==================================================
 
 Este módulo no sabe nada de Groq, Gemini ni Claude: son funciones de Python
-normales y corrientes. Eso permite que jarvis.py (Groq), jarvis_gemini.py y
-jarvis_claude.py compartan exactamente las mismas capacidades.
+normales y corrientes. Eso permite que joker.py (Groq), joker_gemini.py y
+joker_claude.py compartan exactamente las mismas capacidades.
 
-Para añadirle una habilidad nueva a Jarvis:
+Para añadirle una habilidad nueva a JOKER:
   1. Escribe la función aquí abajo.
   2. Añade su esquema a TOOL_SCHEMAS.
   3. Regístrala en TOOL_FUNCTIONS.
@@ -352,7 +352,7 @@ def search_web(query: str, lang: str = "es") -> str:
                 "format": "json", "srlimit": 1,
             },
             timeout=10,
-            headers={"User-Agent": "Jarvis-v1-proyecto-personal"},
+            headers={"User-Agent": "JOKER-v1-proyecto-personal"},
         )
         busqueda.raise_for_status()
     except requests.RequestException as e:
@@ -372,7 +372,7 @@ def search_web(query: str, lang: str = "es") -> str:
                 "explaintext": True, "format": "json", "titles": titulo,
             },
             timeout=10,
-            headers={"User-Agent": "Jarvis-v1-proyecto-personal"},
+            headers={"User-Agent": "JOKER-v1-proyecto-personal"},
         )
         extracto.raise_for_status()
     except requests.RequestException as e:
