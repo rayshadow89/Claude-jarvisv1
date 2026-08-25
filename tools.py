@@ -2,9 +2,9 @@
 Tools de Jarvis — la "lógica" real del asistente.
 ==================================================
 
-Este módulo no sabe nada de Gemini ni de Claude: son funciones de Python
-normales y corrientes. Eso permite que jarvis.py (Gemini) y jarvis_claude.py
-(Anthropic) compartan exactamente las mismas capacidades.
+Este módulo no sabe nada de Groq, Gemini ni Claude: son funciones de Python
+normales y corrientes. Eso permite que jarvis.py (Groq), jarvis_gemini.py y
+jarvis_claude.py compartan exactamente las mismas capacidades.
 
 Para añadirle una habilidad nueva a Jarvis:
   1. Escribe la función aquí abajo.
@@ -31,43 +31,6 @@ class ToolError(Exception):
 # Tool 1: get_datetime — hora actual de una ubicación
 # ---------------------------------------------------------------------------
 
-# Mapa mínimo ciudad -> zona horaria IANA. Amplíalo con las ciudades que uses.
-CITY_TIMEZONES = {
-    "madrid": "Europe/Madrid",
-    "barcelona": "Europe/Madrid",
-    "valencia": "Europe/Madrid",
-    "sevilla": "Europe/Madrid",
-    "bilbao": "Europe/Madrid",
-    "canarias": "Atlantic/Canary",
-    "las palmas": "Atlantic/Canary",
-    "tenerife": "Atlantic/Canary",
-    "lisboa": "Europe/Lisbon",
-    "londres": "Europe/London",
-    "london": "Europe/London",
-    "paris": "Europe/Paris",
-    "parís": "Europe/Paris",
-    "berlin": "Europe/Berlin",
-    "berlín": "Europe/Berlin",
-    "roma": "Europe/Rome",
-    "moscu": "Europe/Moscow",
-    "moscú": "Europe/Moscow",
-    "nueva york": "America/New_York",
-    "new york": "America/New_York",
-    "los angeles": "America/Los_Angeles",
-    "ciudad de mexico": "America/Mexico_City",
-    "buenos aires": "America/Argentina/Buenos_Aires",
-    "bogota": "America/Bogota",
-    "lima": "America/Lima",
-    "santiago": "America/Santiago",
-    "tokio": "Asia/Tokyo",
-    "tokyo": "Asia/Tokyo",
-    "pekin": "Asia/Shanghai",
-    "pekín": "Asia/Shanghai",
-    "dubai": "Asia/Dubai",
-    "sidney": "Australia/Sydney",
-    "sydney": "Australia/Sydney",
-}
-
 DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 MESES = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -76,20 +39,44 @@ MESES = [
 
 
 def get_datetime(location: str) -> str:
-    """Devuelve la fecha y hora actual de una ciudad."""
-    tz_name = CITY_TIMEZONES.get(location.strip().lower())
-    if not tz_name:
-        conocidas = ", ".join(sorted(CITY_TIMEZONES)[:8])
-        raise ToolError(
-            f"No tengo la zona horaria de '{location}'. "
-            f"Añádela a CITY_TIMEZONES en tools.py. Algunas que sí conozco: {conocidas}..."
+    """
+    Devuelve la fecha y hora actual de cualquier ciudad del mundo.
+
+    Usa la API de geocodificación de Open-Meteo (gratis, sin clave) para
+    encontrar la ciudad y su zona horaria, y luego calcula la hora local
+    con la librería estándar de Python.
+    """
+    import requests
+
+    try:
+        resp = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": location, "count": 1, "language": "es", "format": "json"},
+            timeout=10,
         )
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        raise ToolError(f"Error de red al buscar '{location}': {e}") from e
+
+    resultados = resp.json().get("results")
+    if not resultados:
+        raise ToolError(f"No encontré ninguna ubicación llamada '{location}'.")
+
+    lugar = resultados[0]
+    tz_name = lugar.get("timezone")
+    if not tz_name:
+        raise ToolError(f"Encontré '{location}' pero no tengo su zona horaria.")
+
     ahora = datetime.now(ZoneInfo(tz_name))
     dia = DIAS[ahora.weekday()]
     mes = MESES[ahora.month - 1]
+
+    pais = lugar.get("country")
+    nombre = f"{lugar.get('name', location)}, {pais}" if pais else lugar.get("name", location)
+
     return (
-        f"En {location} son las {ahora:%H:%M} del {dia} "
-        f"{ahora.day} de {mes} de {ahora.year} (zona horaria {tz_name})."
+        f"En {nombre} son las {ahora:%H:%M} del {dia} "
+        f"{ahora.day} de {mes} de {ahora.year} ({tz_name})."
     )
 
 

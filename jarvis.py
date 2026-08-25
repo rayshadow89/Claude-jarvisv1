@@ -63,6 +63,12 @@ MODEL = "openai/gpt-oss-120b"
 # pidiendo tools en bucle si algo va mal.
 MAX_ITERACIONES = 8
 
+# Por defecto la terminal se queda limpia (solo "Tú:" y "Jarvis:"). Si quieres
+# ver qué tool está llamando por dentro y con qué argumentos, arranca así:
+#   Windows PowerShell:  $env:JARVIS_DEBUG="1"; python jarvis.py
+#   Mac / Linux:         JARVIS_DEBUG=1 python jarvis.py
+DEBUG = os.environ.get("JARVIS_DEBUG") == "1"
+
 SYSTEM_PROMPT = """Eres Jarvis, un asistente personal conversacional.
 Eres cercano, directo y eficiente.
 
@@ -126,8 +132,9 @@ def run_turn(client: OpenAI, messages: list, tool_defs: list):
             argumentos = json.loads(llamada.function.arguments or "{}")
             resultado, hubo_error = tools.execute_tool(llamada.function.name, argumentos)
 
-            print(f"   [tool] {llamada.function.name}({argumentos}) -> "
-                  f"{'ERROR: ' if hubo_error else ''}{resultado}")
+            if DEBUG:
+                print(f"   [tool] {llamada.function.name}({argumentos}) -> "
+                      f"{'ERROR: ' if hubo_error else ''}{resultado}")
 
             messages.append({
                 "role": "tool",
