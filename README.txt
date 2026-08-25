@@ -9,9 +9,15 @@ internet y resolver problemas básicos de matemáticas.
 ÚLTIMO CAMBIO (resumen rápido)
 -------------------------------
 
-Al principio Jarvis usaba la IA de Claude, pero esa API es de pago. Como
-esto es un proyecto para aprender, lo hemos cambiado a Gemini (de Google),
-que es gratis. Así puedes trastear sin gastar ni un euro.
+Primero probamos con Claude (de pago) y luego con Gemini (Google), que
+decía ser gratis pero fue dando problemas: modelos que dejaban de
+funcionar, avisos de facturación, cambios de un día para otro. Así que
+hemos cambiado a Groq, que también es gratis pero de forma estable: sin
+tarjeta, sin sorpresas, sin "actualízate o paga".
+
+jarvis.py ahora usa Groq. Las versiones anteriores (jarvis_gemini.py,
+jarvis_claude.py) se han dejado como referencia por si algún día quieres
+comparar o volver a probarlas.
 
 
 DÓNDE LO DEJASTE / QUÉ FALTA POR HACER
@@ -21,8 +27,8 @@ Pendiente de hacer la próxima vez que retomes esto:
 
   [ ] 1. Actualizar la carpeta:      git pull
   [ ] 2. Instalar lo nuevo:          pip install -r requirements.txt
-  [ ] 3. Sacar tu clave gratis en:   https://aistudio.google.com/apikey
-  [ ] 4. Ponerla en la terminal:     $env:GEMINI_API_KEY="tu-clave"
+  [ ] 3. Sacar tu clave gratis en:   https://console.groq.com/keys
+  [ ] 4. Ponerla en la terminal:     $env:GROQ_API_KEY="tu-clave"
   [ ] 5. Arrancar Jarvis:            python jarvis.py
   [ ] 6. Probarlo y contarle a Claude cómo ha ido
 
@@ -33,38 +39,42 @@ MARCHA".
 FICHEROS DEL PROYECTO
 ---------------------
 
-  jarvis.py         El asistente. Usa Gemini (Google) -> GRATIS.
-  jarvis_claude.py  La misma idea pero con la API de Claude -> DE PAGO.
+  jarvis.py         El asistente, por defecto. Usa Groq -> GRATIS y estable.
+  jarvis_gemini.py  La misma idea con Gemini (Google). Referencia: dio
+                    problemas de facturación, puede que no funcione ya.
+  jarvis_claude.py  La misma idea con Claude (Anthropic) -> DE PAGO.
                     Está aquí solo como referencia/comparación.
-  tools.py          Las habilidades de Jarvis (hora, clima, matemáticas).
-                    No depende de ningún proveedor, la comparten los dos.
+  tools.py          Las habilidades de Jarvis (hora, clima, matemáticas,
+                    búsqueda web). No depende de ningún proveedor, la
+                    comparten las tres versiones.
   requirements.txt  Las librerías que hay que instalar.
 
 
-CÓMO PONERLO EN MARCHA (versión gratuita)
-------------------------------------------
+CÓMO PONERLO EN MARCHA (versión por defecto, con Groq)
+---------------------------------------------------------
 
 1. Instala las dependencias, desde esta misma carpeta:
 
      pip install -r requirements.txt
 
-2. Consigue una clave gratuita de Gemini en:
+2. Consigue una clave gratuita de Groq en:
 
-     https://aistudio.google.com/apikey
+     https://console.groq.com/keys
 
-   Es gratis y no pide tarjeta. Tiene límites de peticiones por minuto y
-   por día, más que suficientes para trastear.
+   Es gratis, sin tarjeta, y no tiene fecha de caducidad conocida (a
+   diferencia de lo que nos pasó con Gemini). Tiene límites de peticiones
+   por minuto y por día, de sobra para trastear.
 
 3. Configura la clave en la terminal (dura hasta que cierres la ventana):
 
-     Windows PowerShell:  $env:GEMINI_API_KEY="tu-clave"
-     Windows cmd:         set GEMINI_API_KEY=tu-clave
-     Mac / Linux:         export GEMINI_API_KEY="tu-clave"
+     Windows PowerShell:  $env:GROQ_API_KEY="tu-clave"
+     Windows cmd:         set GROQ_API_KEY=tu-clave
+     Mac / Linux:         export GROQ_API_KEY="tu-clave"
 
    Alternativa más cómoda: crea un fichero llamado .env en esta carpeta con
    esta línea dentro, y se cargará sola cada vez:
 
-     GEMINI_API_KEY=tu-clave
+     GROQ_API_KEY=tu-clave
 
 4. Arranca Jarvis:
 
@@ -74,7 +84,7 @@ CÓMO PONERLO EN MARCHA (versión gratuita)
 
      ¿qué hora es en Tokio?
      cuánto es (45 * 8) / 3
-     busca las últimas noticias sobre el Real Madrid
+     busca información sobre el Real Madrid
 
    Escribe 'salir' para terminar.
 
@@ -88,6 +98,16 @@ La tool del clima necesita otra clave, también gratuita:
 
 Configúrala igual que la anterior, con el nombre OPENWEATHER_API_KEY.
 Sin ella, todo lo demás sigue funcionando.
+
+
+LA BÚSQUEDA WEB, EN HONESTIDAD
+--------------------------------
+
+La tool de búsqueda usa la Wikipedia, no un buscador de verdad. Sirve para
+"qué es X" o "quién fue X", pero no para noticias del día de hoy. Es la
+opción que hemos elegido porque es gratis y no necesita clave. Si más
+adelante quieres búsqueda real de internet, se puede sustituir por un
+servicio como Tavily o Serper (tienen capa gratuita, pero piden registro).
 
 
 CÓMO AÑADIRLE HABILIDADES NUEVAS

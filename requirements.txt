@@ -1,11 +1,13 @@
 # Dependencias de Jarvis v1
 # Instalar con:  pip install -r requirements.txt
 
-# --- Necesarias para jarvis.py (versión gratuita, con Gemini) ---
-google-genai>=1.0.0
+# --- Necesarias para jarvis.py (versión por defecto, con Groq) ---
+openai>=1.50.0
 requests>=2.31.0
 python-dotenv>=1.0.0
 
-# --- Solo para jarvis_claude.py (versión de pago, con Claude) ---
-# Descoméntala si algún día quieres usar la API de Anthropic.
+# --- Solo si quieres probar las otras versiones (guardadas como referencia) ---
+# jarvis_gemini.py -> descomenta:
+# google-genai>=1.0.0
+# jarvis_claude.py -> descomenta:
 # anthropic>=0.69.0

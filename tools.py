@@ -181,6 +181,65 @@ def calculate(expression: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tool 4: search_web — búsqueda de información en internet (API de Wikipedia)
+# ---------------------------------------------------------------------------
+
+# API pública de MediaWiki: no requiere clave, es la misma que usan miles de
+# bots de Wikipedia desde hace años. Limitación honesta: solo encuentra lo
+# que hay en Wikipedia, así que sirve para "qué es X" o "quién fue X", pero
+# no para noticias del día. Si más adelante quieres búsqueda web de verdad,
+# esto es lo que habría que sustituir (por ejemplo por Tavily o Serper).
+def search_web(query: str, lang: str = "es") -> str:
+    """Busca un término en Wikipedia y devuelve un resumen breve."""
+    import requests
+
+    api_url = f"https://{lang}.wikipedia.org/w/api.php"
+
+    try:
+        busqueda = requests.get(
+            api_url,
+            params={
+                "action": "query", "list": "search", "srsearch": query,
+                "format": "json", "srlimit": 1,
+            },
+            timeout=10,
+            headers={"User-Agent": "Jarvis-v1-proyecto-personal"},
+        )
+        busqueda.raise_for_status()
+    except requests.RequestException as e:
+        raise ToolError(f"Error de red al buscar '{query}': {e}") from e
+
+    resultados = busqueda.json().get("query", {}).get("search", [])
+    if not resultados:
+        raise ToolError(f"No encontré nada sobre '{query}' en Wikipedia.")
+
+    titulo = resultados[0]["title"]
+
+    try:
+        extracto = requests.get(
+            api_url,
+            params={
+                "action": "query", "prop": "extracts", "exintro": True,
+                "explaintext": True, "format": "json", "titles": titulo,
+            },
+            timeout=10,
+            headers={"User-Agent": "Jarvis-v1-proyecto-personal"},
+        )
+        extracto.raise_for_status()
+    except requests.RequestException as e:
+        raise ToolError(f"Error de red al leer '{titulo}': {e}") from e
+
+    paginas = extracto.json().get("query", {}).get("pages", {})
+    texto = next(iter(paginas.values()), {}).get("extract", "").strip()
+    if not texto:
+        raise ToolError(f"Encontré '{titulo}' pero no pude leer su contenido.")
+
+    # Recortamos para no gastar de más en tokens de salida.
+    resumen = texto[:800] + ("..." if len(texto) > 800 else "")
+    return f"Según Wikipedia ({titulo}): {resumen}"
+
+
+# ---------------------------------------------------------------------------
 # Registro de tools
 # ---------------------------------------------------------------------------
 
@@ -249,12 +308,32 @@ TOOL_SCHEMAS = [
             "required": ["expression"],
         },
     },
+    {
+        "name": "search_web",
+        "description": (
+            "Busca información en internet sobre una persona, un lugar, un "
+            "concepto o un evento. Úsala cuando el usuario pregunte algo que "
+            "no sepas con certeza o pida buscar/investigar sobre un tema. "
+            "Nota: solo encuentra lo que hay en Wikipedia, no noticias de última hora."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Qué buscar, por ejemplo 'Real Madrid' o 'Marie Curie'.",
+                }
+            },
+            "required": ["query"],
+        },
+    },
 ]
 
 TOOL_FUNCTIONS = {
     "get_datetime": get_datetime,
     "get_weather": get_weather,
     "calculate": calculate,
+    "search_web": search_web,
 }
 
 
