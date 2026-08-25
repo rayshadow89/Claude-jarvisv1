@@ -5,6 +5,9 @@
 openai>=1.50.0
 requests>=2.31.0
 python-dotenv>=1.0.0
+# Base de datos de zonas horarias del mundo. Linux y Mac la traen en el
+# sistema, pero Windows NO — sin esto, la hora falla en todas las ciudades.
+tzdata>=2024.1
 
 # --- Solo si quieres probar las otras versiones (guardadas como referencia) ---
 # jarvis_gemini.py -> descomenta:

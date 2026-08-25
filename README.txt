@@ -9,6 +9,13 @@ internet y resolver problemas básicos de matemáticas.
 ÚLTIMO CAMBIO (resumen rápido)
 -------------------------------
 
+ARREGLADO: la hora fallaba en TODAS las ciudades. El motivo era que
+Windows no trae la base de datos de zonas horarias del mundo (Linux y Mac
+sí). Se soluciona con "pip install -r requirements.txt", que ahora la
+instala. Además, la hora de las ciudades y países principales ya se
+resuelve sin necesidad de internet.
+
+
 Primero probamos con Claude (de pago) y luego con Gemini (Google), que
 decía ser gratis pero fue dando problemas: modelos que dejaban de
 funcionar, avisos de facturación, cambios de un día para otro. Así que
