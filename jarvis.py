@@ -47,8 +47,11 @@ except ImportError:
 # Configuración
 # ---------------------------------------------------------------------------
 
-# Los modelos "flash" son los que entran en la capa gratuita.
-MODEL = "gemini-3.5-flash"
+# gemini-2.5-flash es el modelo con capa gratuita más estable a día de hoy.
+# Los modelos más nuevos (gemini-3.x) a veces piden un proyecto con
+# facturación activada aunque se anuncien como "gratis" — si en el futuro
+# quieres probar uno más nuevo, cámbialo aquí.
+MODEL = "gemini-2.5-flash"
 
 # Tope de vueltas del loop por cada mensaje del usuario. Evita bucles infinitos
 # si el modelo se empeña en llamar tools una y otra vez.
