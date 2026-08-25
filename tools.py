@@ -2,9 +2,9 @@
 Tools de Jarvis — la "lógica" real del asistente.
 ==================================================
 
-Este módulo no sabe nada de Gemini ni de Claude: son funciones de Python
-normales y corrientes. Eso permite que jarvis.py (Gemini) y jarvis_claude.py
-(Anthropic) compartan exactamente las mismas capacidades.
+Este módulo no sabe nada de Groq, Gemini ni Claude: son funciones de Python
+normales y corrientes. Eso permite que jarvis.py (Groq), jarvis_gemini.py y
+jarvis_claude.py compartan exactamente las mismas capacidades.
 
 Para añadirle una habilidad nueva a Jarvis:
   1. Escribe la función aquí abajo.
@@ -31,43 +31,6 @@ class ToolError(Exception):
 # Tool 1: get_datetime — hora actual de una ubicación
 # ---------------------------------------------------------------------------
 
-# Mapa mínimo ciudad -> zona horaria IANA. Amplíalo con las ciudades que uses.
-CITY_TIMEZONES = {
-    "madrid": "Europe/Madrid",
-    "barcelona": "Europe/Madrid",
-    "valencia": "Europe/Madrid",
-    "sevilla": "Europe/Madrid",
-    "bilbao": "Europe/Madrid",
-    "canarias": "Atlantic/Canary",
-    "las palmas": "Atlantic/Canary",
-    "tenerife": "Atlantic/Canary",
-    "lisboa": "Europe/Lisbon",
-    "londres": "Europe/London",
-    "london": "Europe/London",
-    "paris": "Europe/Paris",
-    "parís": "Europe/Paris",
-    "berlin": "Europe/Berlin",
-    "berlín": "Europe/Berlin",
-    "roma": "Europe/Rome",
-    "moscu": "Europe/Moscow",
-    "moscú": "Europe/Moscow",
-    "nueva york": "America/New_York",
-    "new york": "America/New_York",
-    "los angeles": "America/Los_Angeles",
-    "ciudad de mexico": "America/Mexico_City",
-    "buenos aires": "America/Argentina/Buenos_Aires",
-    "bogota": "America/Bogota",
-    "lima": "America/Lima",
-    "santiago": "America/Santiago",
-    "tokio": "Asia/Tokyo",
-    "tokyo": "Asia/Tokyo",
-    "pekin": "Asia/Shanghai",
-    "pekín": "Asia/Shanghai",
-    "dubai": "Asia/Dubai",
-    "sidney": "Australia/Sydney",
-    "sydney": "Australia/Sydney",
-}
-
 DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 MESES = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -76,20 +39,44 @@ MESES = [
 
 
 def get_datetime(location: str) -> str:
-    """Devuelve la fecha y hora actual de una ciudad."""
-    tz_name = CITY_TIMEZONES.get(location.strip().lower())
-    if not tz_name:
-        conocidas = ", ".join(sorted(CITY_TIMEZONES)[:8])
-        raise ToolError(
-            f"No tengo la zona horaria de '{location}'. "
-            f"Añádela a CITY_TIMEZONES en tools.py. Algunas que sí conozco: {conocidas}..."
+    """
+    Devuelve la fecha y hora actual de cualquier ciudad del mundo.
+
+    Usa la API de geocodificación de Open-Meteo (gratis, sin clave) para
+    encontrar la ciudad y su zona horaria, y luego calcula la hora local
+    con la librería estándar de Python.
+    """
+    import requests
+
+    try:
+        resp = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": location, "count": 1, "language": "es", "format": "json"},
+            timeout=10,
         )
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        raise ToolError(f"Error de red al buscar '{location}': {e}") from e
+
+    resultados = resp.json().get("results")
+    if not resultados:
+        raise ToolError(f"No encontré ninguna ubicación llamada '{location}'.")
+
+    lugar = resultados[0]
+    tz_name = lugar.get("timezone")
+    if not tz_name:
+        raise ToolError(f"Encontré '{location}' pero no tengo su zona horaria.")
+
     ahora = datetime.now(ZoneInfo(tz_name))
     dia = DIAS[ahora.weekday()]
     mes = MESES[ahora.month - 1]
+
+    pais = lugar.get("country")
+    nombre = f"{lugar.get('name', location)}, {pais}" if pais else lugar.get("name", location)
+
     return (
-        f"En {location} son las {ahora:%H:%M} del {dia} "
-        f"{ahora.day} de {mes} de {ahora.year} (zona horaria {tz_name})."
+        f"En {nombre} son las {ahora:%H:%M} del {dia} "
+        f"{ahora.day} de {mes} de {ahora.year} ({tz_name})."
     )
 
 
@@ -181,6 +168,65 @@ def calculate(expression: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tool 4: search_web — búsqueda de información en internet (API de Wikipedia)
+# ---------------------------------------------------------------------------
+
+# API pública de MediaWiki: no requiere clave, es la misma que usan miles de
+# bots de Wikipedia desde hace años. Limitación honesta: solo encuentra lo
+# que hay en Wikipedia, así que sirve para "qué es X" o "quién fue X", pero
+# no para noticias del día. Si más adelante quieres búsqueda web de verdad,
+# esto es lo que habría que sustituir (por ejemplo por Tavily o Serper).
+def search_web(query: str, lang: str = "es") -> str:
+    """Busca un término en Wikipedia y devuelve un resumen breve."""
+    import requests
+
+    api_url = f"https://{lang}.wikipedia.org/w/api.php"
+
+    try:
+        busqueda = requests.get(
+            api_url,
+            params={
+                "action": "query", "list": "search", "srsearch": query,
+                "format": "json", "srlimit": 1,
+            },
+            timeout=10,
+            headers={"User-Agent": "Jarvis-v1-proyecto-personal"},
+        )
+        busqueda.raise_for_status()
+    except requests.RequestException as e:
+        raise ToolError(f"Error de red al buscar '{query}': {e}") from e
+
+    resultados = busqueda.json().get("query", {}).get("search", [])
+    if not resultados:
+        raise ToolError(f"No encontré nada sobre '{query}' en Wikipedia.")
+
+    titulo = resultados[0]["title"]
+
+    try:
+        extracto = requests.get(
+            api_url,
+            params={
+                "action": "query", "prop": "extracts", "exintro": True,
+                "explaintext": True, "format": "json", "titles": titulo,
+            },
+            timeout=10,
+            headers={"User-Agent": "Jarvis-v1-proyecto-personal"},
+        )
+        extracto.raise_for_status()
+    except requests.RequestException as e:
+        raise ToolError(f"Error de red al leer '{titulo}': {e}") from e
+
+    paginas = extracto.json().get("query", {}).get("pages", {})
+    texto = next(iter(paginas.values()), {}).get("extract", "").strip()
+    if not texto:
+        raise ToolError(f"Encontré '{titulo}' pero no pude leer su contenido.")
+
+    # Recortamos para no gastar de más en tokens de salida.
+    resumen = texto[:800] + ("..." if len(texto) > 800 else "")
+    return f"Según Wikipedia ({titulo}): {resumen}"
+
+
+# ---------------------------------------------------------------------------
 # Registro de tools
 # ---------------------------------------------------------------------------
 
@@ -249,12 +295,32 @@ TOOL_SCHEMAS = [
             "required": ["expression"],
         },
     },
+    {
+        "name": "search_web",
+        "description": (
+            "Busca información en internet sobre una persona, un lugar, un "
+            "concepto o un evento. Úsala cuando el usuario pregunte algo que "
+            "no sepas con certeza o pida buscar/investigar sobre un tema. "
+            "Nota: solo encuentra lo que hay en Wikipedia, no noticias de última hora."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Qué buscar, por ejemplo 'Real Madrid' o 'Marie Curie'.",
+                }
+            },
+            "required": ["query"],
+        },
+    },
 ]
 
 TOOL_FUNCTIONS = {
     "get_datetime": get_datetime,
     "get_weather": get_weather,
     "calculate": calculate,
+    "search_web": search_web,
 }
 
 
