@@ -2,45 +2,83 @@ JOKER
 "La última carta del mazo"
 
 
-QUÉ HACE
---------
+QUÉ ES
+------
 
-Un asistente personal que dice la hora y el tiempo de cualquier lugar del
-mundo, busca información y resuelve problemas de matemáticas.
+Un asistente personal con IA que dice la hora y el clima de cualquier
+lugar del mundo, busca información y resuelve problemas de matemáticas.
+Se llamó "Jarvis" al principio; ahora es JOKER, con página web propia en
+burdeos y negro.
 
 Se puede usar de dos formas:
   - Desde una página web con interfaz de chat  ->  python app.py
-  - Desde la terminal, sin adornos             ->  python joker.py
+  - Desde la terminal, sin adornos              ->  python joker.py
 
 
-ÚLTIMO CAMBIO (resumen rápido)
--------------------------------
+DÓNDE ESTAMOS AHORA MISMO
+----------------------------
 
-El proyecto se llamaba Jarvis y ahora se llama JOKER. Además de cambiarle
-el nombre a todo, ahora tiene una PÁGINA WEB con colores burdeos y negros,
-en vez de tener que hablar con él desde la ventana negra de la terminal.
+Hay una pull request esperando en GitHub con el último arreglo (la imagen
+de la mascota daba 404). Fusiónala igual que las anteriores:
 
+  https://github.com/rayshadow89/Claude-jarvisv1/pull/6
 
-DÓNDE LO DEJASTE / QUÉ FALTA POR HACER
------------------------------------------
+Después de fusionarla, esto es lo que queda pendiente:
 
   [ ] 1. Actualizar la carpeta:      git pull
   [ ] 2. Instalar lo nuevo:          pip install -r requirements.txt
-  [ ] 3. Guardar la imagen del diablillo dentro de la carpeta "static"
-         con un nombre que EMPIECE por "joker" (ej. joker.png o joker.jpg)
-         (es lo único que no puedo hacer yo; sin ella sale un 🃏 en su sitio)
-  [ ] 4. Poner la clave:             $env:GROQ_API_KEY="tu-clave"
-  [ ] 5. Arrancar la web:            python app.py
-  [ ] 6. Abrir en el navegador:      http://127.0.0.1:5000
+  [ ] 3. Poner la clave:             $env:GROQ_API_KEY="tu-clave"
+  [ ] 4. Arrancar la web:            python app.py
+  [ ] 5. Abrir en el navegador:      http://127.0.0.1:5000
+  [ ] 6. Refrescar con Ctrl+F5 (para que no salga una versión en caché)
+
+La imagen de la mascota (static/joker.jpg) ya está en el proyecto — eso
+ya no hace falta repetirlo.
+
+
+TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
+---------------------------------------------------------------
+
+1. Empezamos con la API de Claude (Anthropic) como esqueleto de function
+   calling. Es de pago, así que se descartó como opción por defecto.
+
+2. Se probó con Gemini (Google), que se anunciaba como gratis. Dio
+   problemas: modelos que dejaban de estar disponibles, avisos de tener
+   que activar facturación, cambios de un día para otro. Se descartó.
+   (Se conserva en joker_gemini.py por si algún día se quiere retomar.)
+
+3. Se migró a Groq: gratis de verdad, sin tarjeta, con límites de uso
+   generosos para un proyecto personal. Es el que se usa ahora.
+
+4. La hora fallaba en TODAS las ciudades en Windows. Causa: Windows no
+   trae de serie la base de datos de zonas horarias del mundo (Linux y
+   Mac sí). Arreglado instalando "tzdata" y haciendo que la hora se
+   resuelva primero sin necesidad de internet (con alias en español para
+   ciudades y países), y solo si hace falta se consulta una API externa
+   gratuita (Open-Meteo) para ubicaciones menos conocidas.
+
+5. Se cambió el nombre del proyecto de "Jarvis" a "JOKER", con el eslogan
+   "La última carta del mazo".
+
+6. Se creó la página web (app.py + templates/index.html): un chat en
+   burdeos y negro que por dentro usa exactamente el mismo motor y las
+   mismas herramientas que la versión de terminal.
+
+7. La imagen de la mascota no aparecía. Causa real: se pedía con un
+   nombre de archivo fijo ("joker.png") y encima hubo cambios hechos a
+   la vez desde el terminal y desde la web de GitHub que se cruzaron.
+   Arreglado con una ruta flexible (/mascota) que encuentra cualquier
+   archivo que empiece por "joker", sea cual sea su extensión o si está
+   en mayúsculas o minúsculas.
 
 
 FICHEROS DEL PROYECTO
----------------------
+----------------------
 
   app.py            El servidor de la página web. Es lo que ejecutas para
                     usar JOKER desde el navegador.
   templates/        El diseño de la página web (index.html).
-  static/           Imágenes. Aquí va joker.png.
+  static/           Imágenes. Aquí está joker.jpg (la mascota).
 
   joker.py          El asistente en versión terminal. Contiene el "motor"
                     (el loop que habla con la IA), que la web reutiliza.
@@ -97,22 +135,13 @@ CÓMO PONERLO EN MARCHA
      Busca información sobre Nikola Tesla
 
 
-LA IMAGEN DE JOKER
--------------------
+LA IMAGEN DE LA MASCOTA
+-------------------------
 
-Guarda la imagen del diablillo en la carpeta "static". El nombre no tiene
-que ser exacto: basta con que EMPIECE por "joker" (mayúsculas o minúsculas
-da igual) y sea .png, .jpg, .jpeg, .webp o .gif. Por ejemplo, todos estos
-valdrían:
-
-    static/joker.png
-    static/Joker.PNG
-    static/joker_mascota.jpg
-
-Si no encuentra ninguna, sale un 🃏 en su lugar y todo lo demás funciona
-igual. Si la guardaste y sigue sin salir, casi seguro es que el archivo no
-está dentro de la carpeta "static" (comprueba la ruta) o el nombre no
-empieza literalmente por "joker".
+Ya está puesta (static/joker.jpg). Si algún día quieres cambiarla, solo
+tiene que EMPEZAR por "joker" (mayúsculas o minúsculas da igual) y ser
+.png, .jpg, .jpeg, .webp o .gif — el nombre exacto no importa. Si no
+hay ninguna, sale un 🃏 en su lugar y todo lo demás sigue funcionando.
 
 
 CLIMA (opcional)
@@ -137,7 +166,7 @@ servicio como Tavily o Serper (tienen capa gratuita, pero piden registro).
 
 
 CÓMO AÑADIRLE HABILIDADES NUEVAS
----------------------------------
+-----------------------------------
 
 Todo se hace en tools.py, en tres pasos:
 
@@ -153,9 +182,14 @@ escribas. Cuanto más claro digas CUÁNDO debe usarse (no solo qué hace),
 mejor acertará.
 
 
-NOTA SOBRE EL HISTORIAL DE CONVERSACIÓN
------------------------------------------
+UN PAR DE COSAS A TENER EN CUENTA
+-------------------------------------
 
-Las conversaciones de la web se guardan en la memoria del servidor, así que
-se borran al cerrar la ventana donde ejecutaste "python app.py". El botón
-"Nueva partida" las borra a mano cuando quieras empezar de cero.
+- Las conversaciones de la web se guardan en la memoria del servidor, así
+  que se borran al cerrar la ventana donde ejecutaste "python app.py". El
+  botón "Nueva partida" las borra a mano cuando quieras empezar de cero.
+
+- Si editas archivos directamente desde la web de GitHub mientras hay
+  trabajo en curso aquí, es fácil que los cambios se crucen (ya ha pasado
+  una vez, con la imagen de la mascota). Mejor pedir los cambios aquí, o
+  avisar antes de tocar algo en GitHub.
