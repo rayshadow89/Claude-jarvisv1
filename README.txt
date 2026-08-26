@@ -18,22 +18,41 @@ Se puede usar de dos formas:
 DÓNDE ESTAMOS AHORA MISMO
 ----------------------------
 
-Hay una pull request esperando en GitHub con el último arreglo (la imagen
-de la mascota daba 404). Fusiónala igual que las anteriores:
+FUNCIONANDO Y TERMINADO. La página web está completa: el chat, los
+colores burdeos y negro, el título JOKER, el eslogan, la imagen del
+diablillo y el icono de la pestaña del navegador. Todo probado.
 
-  https://github.com/rayshadow89/Claude-jarvisv1/pull/6
+Para usarlo, cada vez:
 
-Después de fusionarla, esto es lo que queda pendiente:
+  1. Colócate en la rama main:     git checkout main
+  2. Actualiza:                     git pull
+  3. Pon la clave:                  $env:GROQ_API_KEY="tu-clave"
+  4. Arranca la web:                python app.py
+  5. Abre en el navegador:          http://127.0.0.1:5000
 
-  [ ] 1. Actualizar la carpeta:      git pull
-  [ ] 2. Instalar lo nuevo:          pip install -r requirements.txt
-  [ ] 3. Poner la clave:             $env:GROQ_API_KEY="tu-clave"
-  [ ] 4. Arrancar la web:            python app.py
-  [ ] 5. Abrir en el navegador:      http://127.0.0.1:5000
-  [ ] 6. Refrescar con Ctrl+F5 (para que no salga una versión en caché)
+(el paso 1 solo hace falta si alguna vez te cambias de rama sin querer)
 
-La imagen de la mascota (static/joker.jpg) ya está en el proyecto — eso
-ya no hace falta repetirlo.
+
+AVISO IMPORTANTE: USA SIEMPRE LA RAMA "main"
+-----------------------------------------------
+
+Este proyecto tiene dos ramas en GitHub:
+
+  main    <- LA BUENA. Aquí está lo terminado y probado. USA ESTA.
+  claude/python-function-calling-script-...  <- zona de trabajo de Claude.
+          Cambia constantemente y puede estar a medias. NO la uses.
+
+Si en algún momento algo "deja de funcionar" sin motivo, lo primero que
+hay que mirar es en qué rama estás:
+
+  git branch
+
+El asterisco (*) tiene que estar en main. Si no lo está:
+
+  git checkout main
+  git pull
+
+Esto ya ha pasado dos veces y fue la causa real del problema las dos.
 
 
 TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
@@ -64,12 +83,17 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
    burdeos y negro que por dentro usa exactamente el mismo motor y las
    mismas herramientas que la versión de terminal.
 
-7. La imagen de la mascota no aparecía. Causa real: se pedía con un
-   nombre de archivo fijo ("joker.png") y encima hubo cambios hechos a
-   la vez desde el terminal y desde la web de GitHub que se cruzaron.
-   Arreglado con una ruta flexible (/mascota) que encuentra cualquier
-   archivo que empiece por "joker", sea cual sea su extensión o si está
-   en mayúsculas o minúsculas.
+7. La imagen de la mascota no aparecía. Hubo dos causas encadenadas:
+   primero, se pedía con un nombre de archivo fijo ("joker.png") y hubo
+   cambios hechos a la vez desde el terminal y desde la web de GitHub
+   que se cruzaron; y segundo, la copia local estaba en la rama de
+   trabajo de Claude en vez de en main, así que no recibía el arreglo.
+   Resuelto con una ruta flexible (/mascota) que encuentra cualquier
+   archivo que empiece por "joker" sea cual sea su extensión, y
+   volviendo a la rama main. Ya funciona.
+
+8. Se añadió el icono de la pestaña del navegador (favicon), que
+   reutiliza la misma imagen del diablillo.
 
 
 FICHEROS DEL PROYECTO
