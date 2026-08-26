@@ -26,7 +26,8 @@ DÓNDE LO DEJASTE / QUÉ FALTA POR HACER
 
   [ ] 1. Actualizar la carpeta:      git pull
   [ ] 2. Instalar lo nuevo:          pip install -r requirements.txt
-  [ ] 3. Guardar la imagen del diablillo como:   static/joker.png
+  [ ] 3. Guardar la imagen del diablillo dentro de la carpeta "static"
+         con un nombre que EMPIECE por "joker" (ej. joker.png o joker.jpg)
          (es lo único que no puedo hacer yo; sin ella sale un 🃏 en su sitio)
   [ ] 4. Poner la clave:             $env:GROQ_API_KEY="tu-clave"
   [ ] 5. Arrancar la web:            python app.py
@@ -99,9 +100,19 @@ CÓMO PONERLO EN MARCHA
 LA IMAGEN DE JOKER
 -------------------
 
-Guarda la imagen del diablillo en la carpeta "static" con el nombre exacto
-joker.png. La página la busca ahí sola. Si no está, sale un 🃏 en su lugar
-y todo lo demás funciona igual.
+Guarda la imagen del diablillo en la carpeta "static". El nombre no tiene
+que ser exacto: basta con que EMPIECE por "joker" (mayúsculas o minúsculas
+da igual) y sea .png, .jpg, .jpeg, .webp o .gif. Por ejemplo, todos estos
+valdrían:
+
+    static/joker.png
+    static/Joker.PNG
+    static/joker_mascota.jpg
+
+Si no encuentra ninguna, sale un 🃏 en su lugar y todo lo demás funciona
+igual. Si la guardaste y sigue sin salir, casi seguro es que el archivo no
+está dentro de la carpeta "static" (comprueba la ruta) o el nombre no
+empieza literalmente por "joker".
 
 
 CLIMA (opcional)

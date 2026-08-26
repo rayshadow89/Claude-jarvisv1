@@ -25,9 +25,10 @@ from __future__ import annotations
 
 import os
 import secrets
+from pathlib import Path
 
 import openai
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, render_template, request, send_from_directory, session
 
 import joker
 
@@ -79,6 +80,38 @@ def _recortar(messages: list) -> None:
     # lo originó), o la API lo rechaza. Los quitamos si han quedado sueltos.
     while len(messages) > 1 and messages[1].get("role") == "tool":
         del messages[1]
+
+
+# Carpeta donde buscamos la imagen de la mascota.
+CARPETA_STATIC = Path(__file__).parent / "static"
+
+# Extensiones de imagen que aceptamos, para no depender de que el nombre sea
+# EXACTAMENTE "joker.png" — Windows a veces oculta la extensión real al
+# guardar ("joker.png.jpg"), o guarda en mayúsculas, o en otro formato.
+EXTENSIONES_IMAGEN = (".png", ".jpg", ".jpeg", ".webp", ".gif")
+
+
+def _buscar_imagen_mascota() -> str | None:
+    """Busca en /static cualquier archivo que empiece por 'joker' y sea una
+    imagen, sin importar mayúsculas/minúsculas ni la extensión exacta."""
+    if not CARPETA_STATIC.is_dir():
+        return None
+    for archivo in sorted(CARPETA_STATIC.iterdir()):
+        if (archivo.is_file()
+                and archivo.name.lower().startswith("joker")
+                and archivo.suffix.lower() in EXTENSIONES_IMAGEN):
+            return archivo.name
+    return None
+
+
+@app.get("/mascota")
+def mascota():
+    """Sirve la imagen de la mascota la encuentre como la encuentre.
+    Si no hay ninguna, devuelve 404 y la página muestra el emoji 🃏."""
+    nombre = _buscar_imagen_mascota()
+    if nombre is None:
+        return "", 404
+    return send_from_directory(CARPETA_STATIC, nombre)
 
 
 @app.get("/")
