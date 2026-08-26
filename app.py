@@ -114,6 +114,16 @@ def mascota():
     return send_from_directory(CARPETA_STATIC, nombre)
 
 
+@app.get("/favicon.ico")
+def favicon():
+    # Evita el 404 que el navegador pide solo por curiosidad; usamos la
+    # misma imagen de la mascota si existe, o nada si no hay ninguna.
+    nombre = _buscar_imagen_mascota()
+    if nombre is None:
+        return "", 204
+    return send_from_directory(CARPETA_STATIC, nombre)
+
+
 @app.get("/")
 def index():
     return render_template("index.html")
