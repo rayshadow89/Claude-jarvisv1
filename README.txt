@@ -95,6 +95,13 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
 8. Se añadió el icono de la pestaña del navegador (favicon), que
    reutiliza la misma imagen del diablillo.
 
+9. El clima dejó de necesitar clave. Antes usaba OpenWeatherMap, que
+   pedía registrarse y sacar una OPENWEATHER_API_KEY, y como nunca se
+   configuró, JOKER respondía que le faltaba esa clave cada vez que se
+   le preguntaba por el tiempo. Ahora usa Open-Meteo (el mismo servicio
+   gratuito que ya usábamos para buscar ciudades), así que funciona sin
+   configurar nada.
+
 
 FICHEROS DEL PROYECTO
 ----------------------
@@ -155,6 +162,7 @@ CÓMO PONERLO EN MARCHA
 5. Pruébalo:
 
      ¿Qué hora es en Tokio?
+     ¿Qué tiempo hace en Madrid?
      Cuánto es (45 * 8) / 3
      Busca información sobre Nikola Tesla
 
@@ -168,15 +176,23 @@ tiene que EMPEZAR por "joker" (mayúsculas o minúsculas da igual) y ser
 hay ninguna, sale un 🃏 en su lugar y todo lo demás sigue funcionando.
 
 
-CLIMA (opcional)
-----------------
+EL CLIMA
+--------
 
-La tool del clima necesita otra clave, también gratuita:
+JOKER te dice el tiempo y la temperatura de cualquier ciudad, pueblo o
+país del mundo. No hace falta configurar nada: usa Open-Meteo, que es
+gratis y no pide ninguna clave.
 
-  https://openweathermap.org/api
+Pruébalo con cosas como:
 
-Configúrala igual que la anterior, con el nombre OPENWEATHER_API_KEY.
-Sin ella, todo lo demás sigue funcionando.
+  ¿Qué tiempo hace en Madrid?
+  ¿Cuántos grados hace en Tokio?
+  ¿Está lloviendo en Londres?
+  ¿Hace frío en Buenos Aires?
+
+Te devuelve el estado del cielo, la temperatura, la sensación térmica,
+la humedad y el viento. Si quieres los grados en Fahrenheit, solo tienes
+que pedírselo.
 
 
 LA BÚSQUEDA WEB, EN HONESTIDAD
