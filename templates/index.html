@@ -362,6 +362,131 @@
     .palos { display: none; }
   }
 
+  /* ---------- Selector de potencia ---------- */
+  .potencia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .potencia-titulo {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 0.64rem;
+    letter-spacing: 0.16em;
+    color: var(--texto-suave);
+    text-transform: uppercase;
+  }
+
+  .potencia-opciones {
+    display: flex;
+    gap: 4px;
+    background: var(--negro-carta);
+    border: 1px solid var(--borde);
+    border-radius: 20px;
+    padding: 3px;
+  }
+
+  .nivel {
+    background: transparent;
+    border: none;
+    color: var(--texto-suave);
+    font-family: inherit;
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+    padding: 5px 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+    white-space: nowrap;
+  }
+  .nivel:hover { color: var(--texto); }
+
+  .nivel[aria-pressed="true"] {
+    background: linear-gradient(145deg, var(--burdeos), var(--burdeos-oscuro));
+    color: #fff;
+  }
+
+  /* El último nivel tiene su propia personalidad */
+  .nivel-joker {
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    color: var(--burdeos-claro);
+  }
+  .nivel-joker:hover {
+    color: var(--burdeos-vivo);
+    text-shadow: 0 0 10px rgba(195, 48, 85, 0.65);
+  }
+  .nivel-joker[aria-pressed="true"] {
+    background: linear-gradient(145deg, var(--burdeos-vivo), var(--burdeos));
+    color: #fff;
+    box-shadow: 0 0 16px rgba(195, 48, 85, 0.55);
+  }
+
+  /* ---------- Modo J0KER: la sala se enciende ---------- */
+
+  /* Cortina de luz burdeos en la parte de arriba de la ventana */
+  .resplandor {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 46vh;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 1.1s ease;
+    background: linear-gradient(
+      to bottom,
+      rgba(195, 48, 85, 0.40) 0%,
+      rgba(168, 40, 74, 0.22) 30%,
+      rgba(125, 24, 50, 0.09) 60%,
+      transparent 100%
+    );
+  }
+  body.modo-joker .resplandor { opacity: 1; }
+
+  /* Todo el fondo sube de intensidad */
+  body {
+    transition: background-color 1.1s ease, background-image 1.1s ease;
+  }
+  body.modo-joker {
+    background-color: #140a0e;
+    background-image:
+      radial-gradient(ellipse 95% 60% at 50% -10%, rgba(195, 48, 85, 0.50), transparent 72%),
+      radial-gradient(ellipse 70% 45% at 50% 110%, rgba(125, 24, 50, 0.22), transparent 72%);
+  }
+  body.modo-joker .app { color: #fdf3f5; }
+  body.modo-joker header { border-bottom-color: rgba(195, 48, 85, 0.45); }
+  body.modo-joker .barra { border-top-color: rgba(195, 48, 85, 0.35); }
+  body.modo-joker .campo { border-color: rgba(195, 48, 85, 0.5); }
+  body.modo-joker .msg.joker { border-left-color: var(--burdeos-vivo); }
+  body.modo-joker .mascota {
+    filter: invert(19%) sepia(64%) saturate(2800%) hue-rotate(325deg) brightness(112%) contrast(96%)
+            drop-shadow(0 0 22px rgba(195, 48, 85, 0.8));
+  }
+  body.modo-joker h1 { filter: drop-shadow(0 0 18px rgba(195, 48, 85, 0.5)); }
+
+  /* Los palos también se avivan */
+  body.modo-joker .palo.negro { color: #c4aeb5; opacity: 0.5; }
+  body.modo-joker .palo.rojo  { color: var(--burdeos-vivo); opacity: 0.72; }
+
+  /* Temblor: se aplica al contenedor, no a la pista, para no pelearse
+     con el transform que mantiene la posición congelada de los palos. */
+  .palos.temblando { animation: temblor 0.55s ease-in-out; }
+
+  @keyframes temblor {
+    0%,100% { transform: translate(0, 0)    rotate(0deg); }
+    12%     { transform: translate(-4px, 1px)  rotate(-0.7deg); }
+    24%     { transform: translate(4px, -1px)  rotate(0.7deg); }
+    36%     { transform: translate(-3px, 2px)  rotate(-0.5deg); }
+    48%     { transform: translate(3px, -2px)  rotate(0.5deg); }
+    62%     { transform: translate(-2px, 1px)  rotate(-0.3deg); }
+    76%     { transform: translate(2px, -1px)  rotate(0.3deg); }
+    88%     { transform: translate(-1px, 0)    rotate(-0.15deg); }
+  }
+
   @media (max-width: 620px) {
     h1 { font-size: 1.9rem; }
     .slogan { font-size: 0.78rem; }
@@ -369,10 +494,16 @@
     .mascota-caja { width: 46px; height: 62px; }
     header { gap: 14px; padding-top: 20px; }
     .btn-nueva { padding: 7px 10px; font-size: 0.75rem; }
+    .potencia { gap: 6px; }
+    .potencia-titulo { display: none; }
+    .nivel { padding: 5px 9px; font-size: 0.68rem; }
   }
 </style>
 </head>
 <body>
+
+<!-- Cortina de luz burdeos en la parte superior. Solo se ve en modo J0KER. -->
+<div class="resplandor" aria-hidden="true"></div>
 
 <!-- Carruseles decorativos de palos de la baraja: bajan por la izquierda
      y suben por la derecha. Los rellena el JavaScript del final. -->
@@ -415,6 +546,20 @@
       </button>
     </div>
     <div class="pie">Pulsa Enter para enviar &middot; Mayús+Enter para salto de línea</div>
+
+    <!-- Selector de potencia. De momento solo cambia el aspecto; cuando quieras
+         que afecte de verdad (memoria, modelo...), el nivel elegido está en la
+         variable `nivelActual` del script y basta con mandarlo a /api/chat. -->
+    <div class="potencia">
+      <span class="potencia-titulo">Potencia</span>
+      <div class="potencia-opciones" id="potencia" role="group" aria-label="Nivel de potencia">
+        <button class="nivel" data-nivel="bajo"  aria-pressed="false">Bajo</button>
+        <button class="nivel" data-nivel="medio" aria-pressed="true">Medio</button>
+        <button class="nivel" data-nivel="alto"  aria-pressed="false">Alto</button>
+        <button class="nivel" data-nivel="extra" aria-pressed="false">Extra</button>
+        <button class="nivel nivel-joker" data-nivel="joker" aria-pressed="false">J0KER</button>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -450,6 +595,123 @@
       pista.appendChild(grupo.cloneNode(true));
       pista.appendChild(grupo);
     });
+  })();
+
+  // ---------- Selector de potencia ----------
+  const CLAVE_NIVEL = 'joker-nivel';
+  const DUR_NORMAL  = 42;   // segundos que tarda una vuelta completa, ritmo normal
+  const DUR_LENTA   = 90;   // en modo J0KER van más despacio, más solemne
+  const MS_TEMBLOR  = 550;  // debe coincidir con la duración de @keyframes temblor
+
+  let nivelActual = 'medio';
+  let tokenTransicion = 0;  // evita que un cambio viejo pise a uno nuevo
+
+  const sinAnimaciones = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function posicionY(el) {
+    return new DOMMatrixReadOnly(getComputedStyle(el).transform).m42;
+  }
+
+  // Arranca una animación en la fase que corresponde a la posición actual de
+  // la pista. Es el truco que hace que al cambiar de sentido los palos sigan
+  // desde donde estaban, en vez de saltar de golpe al principio.
+  function animarPista(pista, nombre, duracion) {
+    const alturaMedia = pista.getBoundingClientRect().height / 2;
+    let avance = 0;
+
+    if (alturaMedia > 0) {
+      const y = posicionY(pista);
+      // "subir" recorre de 0 a -50%; "bajar" recorre de -50% a 0
+      avance = nombre === 'subir' ? -y / alturaMedia : y / alturaMedia + 1;
+      avance = ((avance % 1) + 1) % 1;   // lo deja dentro de [0, 1)
+    }
+
+    pista.style.animation = 'none';
+    void pista.offsetWidth;              // fuerza al navegador a reiniciarla
+    pista.style.transform = '';
+    pista.style.animation = nombre + ' ' + duracion + 's linear infinite';
+    pista.style.animationDelay = '-' + (avance * duracion).toFixed(3) + 's';
+  }
+
+  function congelarPista(pista) {
+    const y = posicionY(pista);
+    pista.style.animation = 'none';
+    pista.style.transform = 'translateY(' + y + 'px)';
+  }
+
+  // En modo J0KER los palos dejan de ir cada uno por su lado: se paran,
+  // tiemblan, y luego suben los dos juntos y despacio.
+  function aplicarModoJoker(activar, conTemblor) {
+    document.body.classList.toggle('modo-joker', activar);
+
+    const contenedores = [...document.querySelectorAll('.palos')];
+    const pistas = contenedores.map(c => c.querySelector('.palos-pista'));
+    if (!pistas.length || sinAnimaciones) return;
+
+    const token = ++tokenTransicion;   // cualquier transición pendiente queda anulada
+    contenedores.forEach(c => c.classList.remove('temblando'));
+
+    if (!activar) {
+      // Volver a lo de siempre: la izquierda baja, la derecha sube.
+      contenedores.forEach(c => {
+        const pista = c.querySelector('.palos-pista');
+        animarPista(pista, c.classList.contains('izquierda') ? 'bajar' : 'subir', DUR_NORMAL);
+      });
+      return;
+    }
+
+    if (!conTemblor) {
+      pistas.forEach(p => animarPista(p, 'subir', DUR_LENTA));
+      return;
+    }
+
+    // 1. Se paran en seco justo donde estén
+    pistas.forEach(congelarPista);
+
+    // 2. Tiemblan (la animación va en el contenedor, no en la pista, para no
+    //    pelearse con el transform que mantiene la posición congelada)
+    contenedores.forEach(c => {
+      void c.offsetWidth;
+      c.classList.add('temblando');
+    });
+
+    // 3. Pasado el temblor, los dos arrancan hacia arriba
+    setTimeout(() => {
+      if (token !== tokenTransicion) return;   // llegó otro cambio por el camino
+      contenedores.forEach(c => c.classList.remove('temblando'));
+      pistas.forEach(p => animarPista(p, 'subir', DUR_LENTA));
+    }, MS_TEMBLOR);
+  }
+
+  function elegirNivel(nivel, conTemblor) {
+    const botones = [...document.querySelectorAll('.nivel')];
+    const boton = botones.find(b => b.dataset.nivel === nivel);
+    if (!boton) return;
+
+    const eraJoker = nivelActual === 'joker';
+    const esJoker = nivel === 'joker';
+    nivelActual = nivel;
+
+    botones.forEach(b => b.setAttribute('aria-pressed', String(b === boton)));
+
+    try {
+      localStorage.setItem(CLAVE_NIVEL, nivel);
+    } catch (e) { /* ventana privada: no pasa nada, simplemente no se recuerda */ }
+
+    if (esJoker !== eraJoker) aplicarModoJoker(esJoker, conTemblor);
+  }
+
+  document.getElementById('potencia').addEventListener('click', (e) => {
+    const boton = e.target.closest('.nivel');
+    if (boton) elegirNivel(boton.dataset.nivel, true);
+  });
+
+  // Recuperar el nivel de la última visita (sin temblor: al abrir la página
+  // no tiene sentido que tiemble sola)
+  (function recuperarNivel() {
+    let guardado = null;
+    try { guardado = localStorage.getItem(CLAVE_NIVEL); } catch (e) { /* sin acceso */ }
+    if (guardado && guardado !== 'medio') elegirNivel(guardado, false);
   })();
 
   const chat       = document.getElementById('chat');
