@@ -102,6 +102,11 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
    gratuito que ya usábamos para buscar ciudades), así que funciona sin
    configurar nada.
 
+10. Se añadió el selector de potencia (Bajo/Medio/Alto/Extra/J0KER) con
+    el modo J0KER: pantalla iluminada, degradado burdeos arriba, y los
+    palos de los laterales parándose, temblando y arrancando los dos
+    hacia arriba. Por ahora es solo estético.
+
 
 FICHEROS DEL PROYECTO
 ----------------------
@@ -174,6 +179,26 @@ Ya está puesta (static/joker.jpg). Si algún día quieres cambiarla, solo
 tiene que EMPEZAR por "joker" (mayúsculas o minúsculas da igual) y ser
 .png, .jpg, .jpeg, .webp o .gif — el nombre exacto no importa. Si no
 hay ninguna, sale un 🃏 en su lugar y todo lo demás sigue funcionando.
+
+
+EL SELECTOR DE POTENCIA
+-------------------------
+
+Debajo de la caja de escribir hay cinco niveles: Bajo, Medio, Alto, Extra
+y J0KER. De momento SOLO cambian el aspecto de la página, no afectan a
+cómo responde la IA — están puestos para ver cómo queda.
+
+El nivel J0KER enciende la sala: el fondo se ilumina, la parte de arriba
+de la ventana se baña en un degradado burdeos, y los palos de los
+laterales dejan de ir cada uno por su lado — se paran en seco, tiemblan
+un instante, y luego suben los dos juntos y más despacio.
+
+El nivel elegido se recuerda entre visitas.
+
+CUANDO QUIERAS QUE HAGA ALGO DE VERDAD (memoria, modelo, etc.), el nivel
+está guardado en la variable `nivelActual` dentro del script de
+templates/index.html. Basta con mandarlo a /api/chat junto al mensaje y
+usarlo en app.py. Está comentado en el propio código.
 
 
 EL CLIMA
