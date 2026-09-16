@@ -254,7 +254,32 @@ UN PAR DE COSAS A TENER EN CUENTA
   que se borran al cerrar la ventana donde ejecutaste "python app.py". El
   botón "Nueva partida" las borra a mano cuando quieras empezar de cero.
 
+
 - Si editas archivos directamente desde la web de GitHub mientras hay
   trabajo en curso aquí, es fácil que los cambios se crucen (ya ha pasado
   una vez, con la imagen de la mascota). Mejor pedir los cambios aquí, o
   avisar antes de tocar algo en GitHub.
+
+
+
+JOKER IDEAS
+
+Meterle copyright para que nadie me la robe.
+Meterle Terminos y condiciones 
+Poder meterle una combinación de teclas en mi pc, que haga que se despierte, y se "propague" en mi ordenador
+Que me de las ultimas informaciones de las inversiones mias, de bolsa, y que en caso de un posible desplome que me avise con notoficaciones al móvil (no se si quiera si puedo hacer esto)
+Que tenga una opción para que pueda decirle en que empresas tengo metido mi dinero, cuanto, y que (obviamente) esta información la encripte y la guarde, pudiendo solo acceder a ella al que le pertenece el portátil
+Que tenga un apartado aparte para mi entrenamiento diario, que se llame "J0KER GYM", que sepa mi rutina, que me de recomendaciones, comidas con + o - calorías para todos los perfiles de entrenamiento.
+También una opción en la que me ayude con mis gastos (esto ams que una ia parecería una pagina web/app con una ia que te arregle todo, me gusta la idea, me la guardo)
+Wishlist, la cual se actualize cada 24 horas, para ver si hay una promo de dicha wishlist, y conseguirla.
+ -------
+
+CAMBIO DE IDEA
+
+Joker, es una ia, pero todo lo que he dicho quiero convertirlo en una APP, en la que este todo metido junto
+------
+
+POR AHORA
+--------
+
+Seguimos con la pagina web, mas adelante haremos un cambio a PWA para que no haya tantos errores mientras seguimos con el proyecto, empezamos con JOKER GYM, que nos dará rutinas según el dia de la semana, comidas recomendadas según lo que busca el cliente (ganar peso, perderlo, ganar musculo...) y basarse en si es ectomorfo, mesomorfo... .También se basa en altura y peso. Cuanto tiempo tiene que rendir para llegar a sus metas y ajustalas según las necesidades y limitaciones que tenga (por ejemplo trabajo, tiempo libre, algún inconveniente, etc) 
