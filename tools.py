@@ -171,6 +171,40 @@ def _buscar_ubicacion(query: str) -> dict | None:
     return None
 
 
+def _resolver_lugar(location: str) -> dict:
+    """
+    Encuentra una ubicación probando varias formas de escribirla.
+
+    El modelo a veces manda "Ciudad, País" (ej. "Madrid, España") y esa
+    cadena completa no siempre encaja con el buscador, así que probamos
+    también solo con el trozo anterior a la coma. Lo usan tanto la tool
+    de la hora como la del clima.
+
+    Lanza ToolError si no la encuentra o si falla la red.
+    """
+    location = location.strip()
+    intentos = [location]
+    if "," in location:
+        intentos.append(location.split(",", 1)[0].strip())
+
+    error_red = None
+    for query in intentos:
+        try:
+            lugar = _buscar_ubicacion(query)
+        except Exception as e:  # fallo de red, timeout, respuesta rara...
+            error_red = e
+            continue
+        if lugar:
+            return lugar
+
+    if error_red is not None:
+        raise ToolError(
+            f"No pude consultar el servicio de ubicaciones para '{location}' "
+            f"(problema de red: {error_red})."
+        )
+    raise ToolError(f"No encontré ninguna ubicación llamada '{location}'.")
+
+
 def get_datetime(location: str) -> str:
     """
     Devuelve la fecha y hora actual de cualquier ciudad o país del mundo.
@@ -201,27 +235,13 @@ def get_datetime(location: str) -> str:
 
     # Fase 2: buscando en internet
     if not tz_name:
-        error_red = None
-        for query in intentos:
-            try:
-                lugar = _buscar_ubicacion(query)
-            except Exception as e:  # fallo de red, timeout, respuesta rara...
-                error_red = e
-                continue
-            if lugar and lugar.get("timezone"):
-                tz_name = lugar["timezone"]
-                pais = lugar.get("country")
-                nombre = lugar.get("name", query)
-                nombre_bonito = f"{nombre}, {pais}" if pais else nombre
-                break
-
+        lugar = _resolver_lugar(location)
+        tz_name = lugar.get("timezone")
         if not tz_name:
-            if error_red is not None:
-                raise ToolError(
-                    f"No pude consultar el servicio de ubicaciones para '{location}' "
-                    f"(problema de red: {error_red})."
-                )
-            raise ToolError(f"No encontré ninguna ubicación llamada '{location}'.")
+            raise ToolError(f"Encontré '{location}' pero no tengo su zona horaria.")
+        pais = lugar.get("country")
+        nombre = lugar.get("name", location)
+        nombre_bonito = f"{nombre}, {pais}" if pais else nombre
 
     try:
         ahora = datetime.now(ZoneInfo(tz_name))
@@ -243,46 +263,115 @@ def get_datetime(location: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Tool 2: get_weather — clima actual (OpenWeatherMap, capa gratuita)
+# Tool 2: get_weather — clima actual (Open-Meteo, gratis y sin clave)
 # ---------------------------------------------------------------------------
 
+# Descripción de cada código de tiempo de la OMM (el estándar que devuelve
+# la API). Los códigos que no estén aquí se agrupan por su primer dígito.
+_CODIGOS_TIEMPO = {
+    0:  "despejado",
+    1:  "mayormente despejado",
+    2:  "parcialmente nublado",
+    3:  "nublado",
+    45: "con niebla",
+    48: "con niebla helada",
+    51: "con llovizna ligera",
+    53: "con llovizna",
+    55: "con llovizna intensa",
+    56: "con llovizna helada ligera",
+    57: "con llovizna helada intensa",
+    61: "con lluvia ligera",
+    63: "lloviendo",
+    65: "con lluvia fuerte",
+    66: "con lluvia helada ligera",
+    67: "con lluvia helada fuerte",
+    71: "nevando ligeramente",
+    73: "nevando",
+    75: "con nevada intensa",
+    77: "con granizo fino",
+    80: "con chubascos ligeros",
+    81: "con chubascos",
+    82: "con chubascos muy fuertes",
+    85: "con chubascos de nieve ligeros",
+    86: "con chubascos de nieve fuertes",
+    95: "con tormenta",
+    96: "con tormenta y algo de granizo",
+    99: "con tormenta y granizo fuerte",
+}
+
+
+def _describir_tiempo(codigo) -> str:
+    """Traduce el código numérico de la API a algo legible en castellano."""
+    try:
+        codigo = int(codigo)
+    except (TypeError, ValueError):
+        return "con el cielo en estado desconocido"
+    return _CODIGOS_TIEMPO.get(codigo, "con el cielo en estado desconocido")
+
+
 def get_weather(location: str, unit: str = "celsius") -> str:
-    """Devuelve el clima actual de una ciudad usando OpenWeatherMap."""
-    api_key = os.environ.get("OPENWEATHER_API_KEY")
-    if not api_key:
-        raise ToolError(
-            "No hay OPENWEATHER_API_KEY configurada, así que no puedo consultar el "
-            "clima. Se consigue gratis en https://openweathermap.org/api"
-        )
+    """
+    Devuelve el clima actual de cualquier ciudad del mundo.
 
-    import requests  # import diferido: solo se carga si esta tool se usa
+    Usa Open-Meteo, que es gratis y NO necesita ninguna clave: primero
+    busca las coordenadas de la ciudad y luego pide el tiempo en ese punto.
+    """
+    import requests
 
-    units_param = "imperial" if unit == "fahrenheit" else "metric"
+    lugar = _resolver_lugar(location)
+
+    fahrenheit = unit == "fahrenheit"
+    parametros = {
+        "latitude": lugar["latitude"],
+        "longitude": lugar["longitude"],
+        "current": "temperature_2m,relative_humidity_2m,apparent_temperature,"
+                   "weather_code,wind_speed_10m",
+        "timezone": "auto",
+    }
+    if fahrenheit:
+        parametros["temperature_unit"] = "fahrenheit"
+        parametros["wind_speed_unit"] = "mph"
+
     try:
         resp = requests.get(
-            "https://api.openweathermap.org/data/2.5/weather",
-            params={"q": location, "appid": api_key, "units": units_param, "lang": "es"},
-            timeout=10,
+            "https://api.open-meteo.com/v1/forecast", params=parametros, timeout=10
         )
+        resp.raise_for_status()
+        actual = resp.json().get("current")
     except requests.RequestException as e:
-        raise ToolError(f"Error de red al consultar el clima: {e}") from e
+        raise ToolError(f"Error de red al consultar el clima de '{location}': {e}") from e
+    except ValueError as e:
+        raise ToolError(f"La API del clima devolvió una respuesta ilegible: {e}") from e
 
-    if resp.status_code == 401:
-        raise ToolError("La OPENWEATHER_API_KEY no es válida.")
-    if resp.status_code == 404:
-        raise ToolError(f"No encontré la ubicación '{location}'.")
-    if not resp.ok:
-        raise ToolError(f"La API de clima devolvió un error ({resp.status_code}).")
+    if not actual:
+        raise ToolError(f"La API del clima no devolvió datos para '{location}'.")
 
-    data = resp.json()
-    simbolo = "°F" if units_param == "imperial" else "°C"
-    return (
-        f"En {location}: {data['weather'][0]['description']}, "
-        f"{data['main']['temp']}{simbolo} "
-        f"(sensación térmica {data['main']['feels_like']}{simbolo}), "
-        f"humedad {data['main']['humidity']}%, "
-        f"viento {data['wind']['speed']} m/s."
-    )
+    pais = lugar.get("country")
+    nombre = lugar.get("name", location)
+    sitio = f"{nombre}, {pais}" if pais else nombre
+
+    grados = "°F" if fahrenheit else "°C"
+    viento_unidad = "mph" if fahrenheit else "km/h"
+
+    partes = [f"En {sitio} está {_describir_tiempo(actual.get('weather_code'))}"]
+
+    temp = actual.get("temperature_2m")
+    if temp is not None:
+        partes.append(f", {temp}{grados}")
+
+    sensacion = actual.get("apparent_temperature")
+    if sensacion is not None and sensacion != temp:
+        partes.append(f" (sensación térmica {sensacion}{grados})")
+
+    humedad = actual.get("relative_humidity_2m")
+    if humedad is not None:
+        partes.append(f", humedad {humedad}%")
+
+    viento = actual.get("wind_speed_10m")
+    if viento is not None:
+        partes.append(f", viento {viento} {viento_unidad}")
+
+    return "".join(partes) + "."
 
 
 # ---------------------------------------------------------------------------
@@ -416,9 +505,11 @@ TOOL_SCHEMAS = [
     {
         "name": "get_weather",
         "description": (
-            "Obtiene el clima actual (temperatura, condición, humedad, viento) "
-            "de una ciudad. Úsala siempre que el usuario pregunte por el tiempo "
-            "o el clima de un lugar."
+            "Obtiene el clima y la temperatura actuales de cualquier ciudad, "
+            "pueblo o país del mundo: estado del cielo, temperatura, sensación "
+            "térmica, humedad y viento. Úsala SIEMPRE que el usuario pregunte "
+            "por el tiempo, el clima, la temperatura, si hace frío o calor, si "
+            "llueve o si nieva en algún sitio."
         ),
         "parameters": {
             "type": "object",
@@ -430,7 +521,10 @@ TOOL_SCHEMAS = [
                 "unit": {
                     "type": "string",
                     "enum": ["celsius", "fahrenheit"],
-                    "description": "Unidad de temperatura. Por defecto celsius.",
+                    "description": (
+                        "Unidad de temperatura. Por defecto celsius; usa "
+                        "fahrenheit solo si el usuario lo pide expresamente."
+                    ),
                 },
             },
             "required": ["location"],
