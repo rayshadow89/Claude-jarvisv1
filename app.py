@@ -30,6 +30,7 @@ from pathlib import Path
 import openai
 from flask import Flask, jsonify, render_template, request, send_from_directory, session
 
+import gym
 import joker
 
 try:
@@ -127,6 +128,91 @@ def favicon():
 @app.get("/")
 def index():
     return render_template("index.html")
+
+
+# ---------------------------------------------------------------------------
+# J0KER GYM
+# ---------------------------------------------------------------------------
+
+@app.get("/gym")
+def pagina_gym():
+    return render_template("gym.html")
+
+
+@app.get("/api/gym/opciones")
+def gym_opciones():
+    """Todo lo que necesita el formulario para pintarse (objetivos, niveles...)."""
+    return jsonify({
+        "objetivos": gym.OBJETIVOS,
+        "niveles": gym.NIVELES,
+        "actividades": {k: v[1] for k, v in gym.FACTORES_ACTIVIDAD.items()},
+        "somatotipos": {k: v[1] for k, v in gym.AJUSTE_SOMATOTIPO.items()},
+        "limitaciones": gym.LIMITACIONES,
+    })
+
+
+@app.get("/api/gym/plan")
+def gym_plan():
+    """Devuelve el plan completo, o avisa de que aún no hay perfil."""
+    perfil = gym.leer_perfil()
+    if not perfil:
+        return jsonify({"hay_perfil": False})
+    return jsonify({"hay_perfil": True, "plan": gym.plan_completo(perfil)})
+
+
+@app.post("/api/gym/perfil")
+def gym_guardar_perfil():
+    """Guarda el perfil y devuelve el plan recién calculado."""
+    datos = request.get_json(silent=True) or {}
+
+    # Validamos lo imprescindible antes de calcular nada
+    try:
+        peso = float(datos.get("peso", 0))
+        altura = float(datos.get("altura", 0))
+        edad = int(datos.get("edad", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "El peso, la altura y la edad tienen que ser números."}), 400
+
+    if not (25 <= peso <= 300):
+        return jsonify({"error": "El peso debe estar entre 25 y 300 kg."}), 400
+    if not (100 <= altura <= 250):
+        return jsonify({"error": "La altura debe estar entre 100 y 250 cm."}), 400
+    if not (14 <= edad <= 100):
+        return jsonify({"error": "La edad debe estar entre 14 y 100 años."}), 400
+
+    objetivo_peso = datos.get("peso_objetivo")
+    if objetivo_peso not in (None, ""):
+        try:
+            objetivo_peso = float(objetivo_peso)
+        except (TypeError, ValueError):
+            return jsonify({"error": "El peso objetivo tiene que ser un número."}), 400
+        if not (25 <= objetivo_peso <= 300):
+            return jsonify({"error": "El peso objetivo debe estar entre 25 y 300 kg."}), 400
+    else:
+        objetivo_peso = None
+
+    perfil = {
+        "peso": peso,
+        "altura": altura,
+        "edad": edad,
+        "sexo": datos.get("sexo", "hombre"),
+        "somatotipo": datos.get("somatotipo", "no_lo_se"),
+        "actividad": datos.get("actividad", "moderado"),
+        "objetivo": datos.get("objetivo", "mantener"),
+        "nivel": datos.get("nivel", "principiante"),
+        "dias_semana": int(datos.get("dias_semana", 3)),
+        "peso_objetivo": objetivo_peso,
+        "limitaciones": [l for l in datos.get("limitaciones", []) if l in gym.LIMITACIONES],
+    }
+
+    gym.guardar_perfil(perfil)
+    return jsonify({"hay_perfil": True, "plan": gym.plan_completo(perfil)})
+
+
+@app.post("/api/gym/borrar")
+def gym_borrar():
+    gym.borrar_perfil()
+    return jsonify({"ok": True})
 
 
 @app.post("/api/nueva")

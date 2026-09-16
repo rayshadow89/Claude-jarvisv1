@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 .env
+
+# Base de datos local: contiene datos personales (peso, salud...).
+# NUNCA debe subirse al repositorio.
+joker.db

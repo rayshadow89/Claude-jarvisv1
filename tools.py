@@ -478,6 +478,29 @@ def search_web(query: str, lang: str = "es") -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tool 5: consultar_gym — el plan de entrenamiento del usuario
+# ---------------------------------------------------------------------------
+
+def consultar_gym() -> str:
+    """
+    Devuelve el plan de J0KER GYM del usuario: sus números, su rutina de la
+    semana, el menú y los plazos. Así JOKER puede hablar de ello por el chat
+    sin inventarse nada: lee exactamente lo mismo que muestra la página /gym.
+    """
+    import gym  # import diferido: solo se carga si se usa esta tool
+
+    perfil = gym.leer_perfil()
+    if not perfil:
+        raise ToolError(
+            "Todavía no hay ningún perfil de gimnasio guardado. Dile al usuario que "
+            "entre en la página /gym y rellene sus datos (peso, altura, edad y objetivo) "
+            "para que pueda calcularle el plan."
+        )
+
+    return gym.resumen_texto(gym.plan_completo(perfil))
+
+
+# ---------------------------------------------------------------------------
 # Registro de tools
 # ---------------------------------------------------------------------------
 
@@ -552,6 +575,17 @@ TOOL_SCHEMAS = [
         },
     },
     {
+        "name": "consultar_gym",
+        "description": (
+            "Consulta el plan de entrenamiento y nutrición del usuario en J0KER GYM: "
+            "sus calorías, macros, IMC, la rutina de cada día de la semana, el menú "
+            "recomendado y cuánto le falta para su meta. Úsala SIEMPRE que pregunte "
+            "por su rutina, su dieta, sus calorías, qué le toca entrenar hoy, qué "
+            "debería comer, o cuánto le queda para llegar a su objetivo."
+        ),
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
         "name": "search_web",
         "description": (
             "Busca información en internet sobre una persona, un lugar, un "
@@ -577,6 +611,7 @@ TOOL_FUNCTIONS = {
     "get_weather": get_weather,
     "calculate": calculate,
     "search_web": search_web,
+    "consultar_gym": consultar_gym,
 }
 
 
