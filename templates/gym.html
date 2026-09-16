@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J0KER GYM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --negro:          #0a0708;
+    --negro-carta:    #14100f;
+    --negro-elevado:  #1d1719;
+    --burdeos:        #7d1832;
+    --burdeos-claro:  #a8284a;
+    --burdeos-vivo:   #c33055;
+    --burdeos-oscuro: #4a0d1c;
+    --texto:          #f0e7e9;
+    --texto-suave:    #a49197;
+    --borde:          #2c2225;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--negro);
+    color: var(--texto);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(125, 24, 50, 0.28), transparent 70%);
+    background-attachment: fixed;
+    padding-bottom: 60px;
+  }
+
+  .app { width: 100%; max-width: 940px; margin: 0 auto; padding: 0 20px; }
+
+  /* ---------- Cabecera ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 28px 4px 22px;
+    border-bottom: 1px solid var(--borde);
+    flex-wrap: wrap;
+  }
+  .mascota { width: 52px; height: 70px; object-fit: contain;
+    filter: invert(19%) sepia(64%) saturate(2800%) hue-rotate(325deg) brightness(94%) contrast(96%)
+            drop-shadow(0 0 14px rgba(195, 48, 85, 0.45)); }
+
+  h1 {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 2.1rem; font-weight: 700; letter-spacing: 0.13em; line-height: 1;
+    background: linear-gradient(170deg, #f3dde2 0%, var(--burdeos-vivo) 55%, var(--burdeos) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .subtitulo { font-family: 'Cinzel', Georgia, serif; font-size: 0.85rem;
+    font-style: italic; color: var(--burdeos-claro); margin-top: 4px; }
+
+  .volver {
+    margin-left: auto; background: transparent; border: 1px solid var(--borde);
+    color: var(--texto-suave); padding: 8px 14px; border-radius: 8px;
+    font-family: inherit; font-size: 0.82rem; cursor: pointer; text-decoration: none;
+    transition: all 0.18s ease; white-space: nowrap;
+  }
+  .volver:hover { border-color: var(--burdeos); color: var(--texto);
+    background: rgba(125, 24, 50, 0.14); }
+
+  /* ---------- Bloques ---------- */
+  section { margin-top: 30px; }
+
+  h2 {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1rem; letter-spacing: 0.13em; color: var(--burdeos-claro);
+    text-transform: uppercase; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2::after { content: ''; flex: 1; height: 1px; background: var(--borde); }
+
+  .tarjeta {
+    background: var(--negro-carta); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 18px;
+  }
+
+  /* ---------- Formulario ---------- */
+  .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+  label { display: block; font-size: 0.78rem; color: var(--texto-suave);
+    margin-bottom: 6px; letter-spacing: 0.02em; }
+  input[type=number], select {
+    width: 100%; background: var(--negro-elevado); border: 1px solid var(--borde);
+    color: var(--texto); font-family: inherit; font-size: 0.95rem;
+    padding: 10px 12px; border-radius: 8px; outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  input:focus, select:focus { border-color: var(--burdeos);
+    box-shadow: 0 0 0 3px rgba(125, 24, 50, 0.2); }
+  .pista { font-size: 0.72rem; color: #6b585e; margin-top: 5px; }
+
+  .casillas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .casilla {
+    display: flex; align-items: center; gap: 7px; background: var(--negro-elevado);
+    border: 1px solid var(--borde); border-radius: 20px; padding: 8px 14px;
+    cursor: pointer; font-size: 0.82rem; transition: all 0.18s ease;
+  }
+  .casilla:hover { border-color: var(--burdeos); }
+  .casilla input { accent-color: var(--burdeos-vivo); cursor: pointer; }
+  .casilla:has(input:checked) { background: rgba(125, 24, 50, 0.22);
+    border-color: var(--burdeos); color: #fff; }
+
+  .boton {
+    background: linear-gradient(145deg, var(--burdeos-claro), var(--burdeos));
+    border: none; color: #fff; font-family: inherit; font-size: 0.92rem;
+    font-weight: 500; padding: 12px 26px; border-radius: 10px; cursor: pointer;
+    transition: all 0.18s ease; margin-top: 20px;
+  }
+  .boton:hover:not(:disabled) {
+    background: linear-gradient(145deg, var(--burdeos-vivo), var(--burdeos-claro));
+    transform: translateY(-1px); }
+  .boton:disabled { opacity: 0.5; cursor: not-allowed; }
+  .boton.secundario { background: transparent; border: 1px solid var(--borde);
+    color: var(--texto-suave); }
+  .boton.secundario:hover { border-color: var(--burdeos); color: var(--texto);
+    background: rgba(125, 24, 50, 0.14); transform: none; }
+
+  /* ---------- Números ---------- */
+  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .numero { background: var(--negro-carta); border: 1px solid var(--borde);
+    border-left: 3px solid var(--burdeos); border-radius: 10px; padding: 14px 16px; }
+  .numero .valor { font-size: 1.6rem; font-weight: 600; color: #fff; line-height: 1.1; }
+  .numero .unidad { font-size: 0.9rem; color: var(--texto-suave); font-weight: 400; }
+  .numero .etiqueta { font-size: 0.74rem; color: var(--texto-suave);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-top: 5px; }
+  .numero .detalle { font-size: 0.76rem; color: #6b585e; margin-top: 3px; }
+
+  /* ---------- Rutina ---------- */
+  .semana { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .dia { background: var(--negro-carta); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 14px 16px; }
+  .dia.libre { opacity: 0.5; }
+  .dia h3 { font-family: 'Cinzel', Georgia, serif; font-size: 0.88rem;
+    letter-spacing: 0.08em; color: #fff; margin-bottom: 3px; }
+  .dia .tipo { font-size: 0.75rem; color: var(--burdeos-claro); margin-bottom: 10px; }
+  .dia .pauta { font-size: 0.72rem; color: #6b585e; margin-bottom: 10px;
+    padding-bottom: 8px; border-bottom: 1px dashed var(--borde); }
+  .dia ul { list-style: none; }
+  .dia li { font-size: 0.83rem; padding: 5px 0; border-bottom: 1px solid rgba(44,34,37,0.5); }
+  .dia li:last-child { border-bottom: none; }
+  .alt { display: block; font-size: 0.71rem; color: #6b585e; margin-top: 2px; }
+  .cambiado { color: var(--burdeos-claro); }
+
+  /* ---------- Menú ---------- */
+  .comidas { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  .comida { background: var(--negro-carta); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 14px 16px; }
+  .comida .momento { font-family: 'Cinzel', Georgia, serif; font-size: 0.72rem;
+    letter-spacing: 0.12em; color: var(--burdeos-claro); text-transform: uppercase;
+    margin-bottom: 7px; }
+  .comida .plato { font-size: 0.9rem; line-height: 1.45; }
+  .comida .macro { font-size: 0.74rem; color: #6b585e; margin-top: 7px; }
+
+  /* ---------- Consejos ---------- */
+  .consejo { background: var(--negro-carta); border: 1px solid var(--borde);
+    border-left: 3px solid var(--burdeos); border-radius: 10px;
+    padding: 13px 16px; margin-bottom: 10px; font-size: 0.89rem; line-height: 1.6; }
+  .consejo.aviso { border-left-color: var(--burdeos-vivo);
+    background: rgba(125, 24, 50, 0.14); }
+  .consejo .clase { display: block; font-size: 0.68rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--burdeos-claro); margin-bottom: 5px; }
+
+  .nota-legal { margin-top: 26px; font-size: 0.76rem; color: #6b585e;
+    line-height: 1.6; border-top: 1px solid var(--borde); padding-top: 16px; }
+
+  .error { background: rgba(125, 24, 50, 0.18); border: 1px solid var(--burdeos);
+    border-radius: 8px; padding: 12px 15px; margin-top: 16px;
+    font-size: 0.88rem; color: #f5c9d2; }
+
+  .cargando { text-align: center; color: var(--texto-suave); padding: 50px 0; }
+  .oculto { display: none; }
+
+  @media (max-width: 620px) {
+    h1 { font-size: 1.6rem; }
+    .mascota { width: 40px; height: 54px; }
+    header { gap: 12px; padding-top: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <img src="/mascota" alt="" class="mascota" onerror="this.style.display='none'">
+    <div>
+      <h1>J0KER GYM</h1>
+      <div class="subtitulo">Tu entrenamiento, calculado</div>
+    </div>
+    <a href="/" class="volver">← Volver al chat</a>
+  </header>
+
+  <div id="cargando" class="cargando">Cargando…</div>
+
+  <!-- ====== FORMULARIO ====== -->
+  <section id="formulario" class="oculto">
+    <h2>Tus datos</h2>
+    <div class="tarjeta">
+      <div class="campos">
+        <div>
+          <label for="peso">Peso actual (kg)</label>
+          <input type="number" id="peso" min="25" max="300" step="0.1" placeholder="75">
+        </div>
+        <div>
+          <label for="altura">Altura (cm)</label>
+          <input type="number" id="altura" min="100" max="250" step="1" placeholder="178">
+        </div>
+        <div>
+          <label for="edad">Edad</label>
+          <input type="number" id="edad" min="14" max="100" step="1" placeholder="28">
+        </div>
+        <div>
+          <label for="sexo">Sexo</label>
+          <select id="sexo">
+            <option value="hombre">Hombre</option>
+            <option value="mujer">Mujer</option>
+          </select>
+          <div class="pista">Cambia el cálculo del metabolismo</div>
+        </div>
+        <div>
+          <label for="objetivo">¿Qué buscas?</label>
+          <select id="objetivo"></select>
+        </div>
+        <div>
+          <label for="peso_objetivo">Peso al que quieres llegar (kg)</label>
+          <input type="number" id="peso_objetivo" min="25" max="300" step="0.1" placeholder="opcional">
+          <div class="pista">Déjalo vacío si no tienes una cifra concreta</div>
+        </div>
+        <div>
+          <label for="nivel">Experiencia entrenando</label>
+          <select id="nivel"></select>
+        </div>
+        <div>
+          <label for="actividad">Actividad fuera del gimnasio</label>
+          <select id="actividad"></select>
+        </div>
+        <div>
+          <label for="dias_semana">Días que puedes entrenar</label>
+          <select id="dias_semana">
+            <option>1</option><option>2</option><option selected>3</option>
+            <option>4</option><option>5</option><option>6</option><option>7</option>
+          </select>
+        </div>
+        <div>
+          <label for="somatotipo">Somatotipo</label>
+          <select id="somatotipo"></select>
+          <div class="pista">Ajuste menor: la ciencia no lo respalda del todo</div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px">
+        <label>Limitaciones (marca las que tengas)</label>
+        <div class="casillas" id="limitaciones"></div>
+      </div>
+
+      <div id="error-form"></div>
+      <button class="boton" id="calcular">Calcular mi plan</button>
+    </div>
+  </section>
+
+  <!-- ====== PLAN ====== -->
+  <div id="plan" class="oculto">
+
+    <section>
+      <h2>Tus números</h2>
+      <div class="numeros" id="numeros"></div>
+    </section>
+
+    <section id="seccion-meta">
+      <h2>Tu meta</h2>
+      <div class="tarjeta" id="meta"></div>
+    </section>
+
+    <section>
+      <h2>La semana</h2>
+      <div class="semana" id="semana"></div>
+    </section>
+
+    <section>
+      <h2>Menú de hoy</h2>
+      <div class="comidas" id="comidas"></div>
+      <div class="tarjeta" id="resumen-menu" style="margin-top:12px"></div>
+    </section>
+
+    <section>
+      <h2>Recomendaciones</h2>
+      <div id="consejos"></div>
+    </section>
+
+    <button class="boton secundario" id="editar">Cambiar mis datos</button>
+
+    <div class="nota-legal" id="aviso"></div>
+  </div>
+
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let opciones = null;
+
+  // Rellena un <select> a partir de un diccionario {valor: descripción}
+  function rellenarSelect(id, dic, porDefecto) {
+    const sel = $(id);
+    sel.innerHTML = '';
+    for (const [valor, texto] of Object.entries(dic)) {
+      const op = document.createElement('option');
+      op.value = valor;
+      op.textContent = texto;
+      if (valor === porDefecto) op.selected = true;
+      sel.appendChild(op);
+    }
+  }
+
+  async function arrancar() {
+    opciones = await (await fetch('/api/gym/opciones')).json();
+
+    rellenarSelect('objetivo', opciones.objetivos, 'ganar_musculo');
+    rellenarSelect('nivel', opciones.niveles, 'principiante');
+    rellenarSelect('actividad', opciones.actividades, 'moderado');
+    rellenarSelect('somatotipo', opciones.somatotipos, 'no_lo_se');
+
+    const caja = $('limitaciones');
+    caja.innerHTML = '';
+    for (const [valor, texto] of Object.entries(opciones.limitaciones)) {
+      const etiqueta = document.createElement('label');
+      etiqueta.className = 'casilla';
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.value = valor;
+      etiqueta.appendChild(check);
+      etiqueta.appendChild(document.createTextNode(texto));
+      caja.appendChild(etiqueta);
+    }
+
+    const datos = await (await fetch('/api/gym/plan')).json();
+    $('cargando').classList.add('oculto');
+
+    if (datos.hay_perfil) {
+      rellenarFormulario(datos.plan.perfil);
+      pintarPlan(datos.plan);
+    } else {
+      $('formulario').classList.remove('oculto');
+    }
+  }
+
+  function rellenarFormulario(perfil) {
+    $('peso').value = perfil.peso;
+    $('altura').value = perfil.altura;
+    $('edad').value = perfil.edad;
+    $('sexo').value = perfil.sexo;
+    $('objetivo').value = perfil.objetivo;
+    $('peso_objetivo').value = perfil.peso_objetivo ?? '';
+    $('nivel').value = perfil.nivel;
+    $('actividad').value = perfil.actividad;
+    $('dias_semana').value = perfil.dias_semana;
+    $('somatotipo').value = perfil.somatotipo;
+    document.querySelectorAll('#limitaciones input').forEach(c => {
+      c.checked = (perfil.limitaciones || []).includes(c.value);
+    });
+  }
+
+  $('calcular').addEventListener('click', async () => {
+    const cuerpo = {
+      peso: $('peso').value, altura: $('altura').value, edad: $('edad').value,
+      sexo: $('sexo').value, objetivo: $('objetivo').value,
+      peso_objetivo: $('peso_objetivo').value || null,
+      nivel: $('nivel').value, actividad: $('actividad').value,
+      dias_semana: $('dias_semana').value, somatotipo: $('somatotipo').value,
+      limitaciones: [...document.querySelectorAll('#limitaciones input:checked')].map(c => c.value),
+    };
+
+    $('error-form').innerHTML = '';
+    $('calcular').disabled = true;
+
+    try {
+      const resp = await fetch('/api/gym/perfil', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(cuerpo),
+      });
+      const datos = await resp.json();
+
+      if (datos.error) {
+        const div = document.createElement('div');
+        div.className = 'error';
+        div.textContent = datos.error;
+        $('error-form').appendChild(div);
+        return;
+      }
+      $('formulario').classList.add('oculto');
+      pintarPlan(datos.plan);
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    } catch (e) {
+      const div = document.createElement('div');
+      div.className = 'error';
+      div.textContent = 'No pude contactar con el servidor. ¿Sigue abierta la ventana de python app.py?';
+      $('error-form').appendChild(div);
+    } finally {
+      $('calcular').disabled = false;
+    }
+  });
+
+  $('editar').addEventListener('click', () => {
+    $('plan').classList.add('oculto');
+    $('formulario').classList.remove('oculto');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  });
+
+  function tarjetaNumero(valor, unidad, etiqueta, detalle) {
+    const div = document.createElement('div');
+    div.className = 'numero';
+    const v = document.createElement('div');
+    v.className = 'valor';
+    v.textContent = valor;
+    if (unidad) {
+      const u = document.createElement('span');
+      u.className = 'unidad';
+      u.textContent = ' ' + unidad;
+      v.appendChild(u);
+    }
+    const e = document.createElement('div');
+    e.className = 'etiqueta';
+    e.textContent = etiqueta;
+    div.append(v, e);
+    if (detalle) {
+      const d = document.createElement('div');
+      d.className = 'detalle';
+      d.textContent = detalle;
+      div.appendChild(d);
+    }
+    return div;
+  }
+
+  function pintarPlan(plan) {
+    const m = plan.metricas, n = plan.nutricion, p = plan.plazo;
+
+    // --- Números ---
+    const nums = $('numeros');
+    nums.innerHTML = '';
+    nums.append(
+      tarjetaNumero(n.calorias, 'kcal', 'Calorías al día', n.explicacion),
+      tarjetaNumero(n.proteina_g, 'g', 'Proteína'),
+      tarjetaNumero(n.carbos_g, 'g', 'Carbohidratos'),
+      tarjetaNumero(n.grasa_g, 'g', 'Grasa'),
+      tarjetaNumero(m.imc, '', 'IMC', m.clasificacion_imc),
+      tarjetaNumero(m.mantenimiento, 'kcal', 'Mantenimiento', `Basal: ${m.basal} kcal`),
+      tarjetaNumero(n.agua_litros, 'L', 'Agua al día'),
+      tarjetaNumero(`${m.peso_saludable_min}-${m.peso_saludable_max}`, 'kg',
+                    'Peso saludable', 'Para tu altura'),
+    );
+
+    // --- Meta ---
+    const meta = $('meta');
+    meta.innerHTML = '';
+    if (p.aplica) {
+      const t = document.createElement('div');
+      t.style.fontSize = '1.05rem';
+      t.style.lineHeight = '1.6';
+      t.textContent = `Para ${p.direccion} ${p.diferencia_kg} kg necesitas entre `
+        + `${p.meses_min} y ${p.meses_max} meses, a un ritmo de ${p.ritmo_semanal}.`;
+      meta.appendChild(t);
+
+      const nota = document.createElement('div');
+      nota.style.cssText = 'font-size:0.82rem;color:#6b585e;margin-top:10px;line-height:1.6';
+      nota.textContent = p.nota;
+      meta.appendChild(nota);
+    } else {
+      const t = document.createElement('div');
+      t.style.lineHeight = '1.6';
+      t.textContent = p.mensaje || 'Sin meta de peso concreta.';
+      meta.appendChild(t);
+    }
+
+    // --- Semana ---
+    const semana = $('semana');
+    semana.innerHTML = '';
+    for (const dia of plan.rutina) {
+      const div = document.createElement('div');
+      div.className = 'dia' + (dia.descanso ? ' libre' : '');
+
+      const h = document.createElement('h3');
+      h.textContent = dia.dia;
+      const tipo = document.createElement('div');
+      tipo.className = 'tipo';
+      tipo.textContent = dia.titulo;
+      div.append(h, tipo);
+
+      if (!dia.descanso) {
+        const pauta = document.createElement('div');
+        pauta.className = 'pauta';
+        pauta.textContent = `${dia.series} series · ${dia.reps} reps · descanso ${dia.tiempo_descanso}`;
+        div.appendChild(pauta);
+
+        const ul = document.createElement('ul');
+        for (const ej of dia.ejercicios) {
+          const li = document.createElement('li');
+          li.textContent = ej.nombre;
+          if (ej.sustituye_a) {
+            const s = document.createElement('span');
+            s.className = 'alt cambiado';
+            s.textContent = `↳ en lugar de ${ej.sustituye_a}, por tus limitaciones`;
+            li.appendChild(s);
+          } else if (ej.alternativa) {
+            const s = document.createElement('span');
+            s.className = 'alt';
+            s.textContent = `↳ alternativa: ${ej.alternativa}`;
+            li.appendChild(s);
+          }
+          ul.appendChild(li);
+        }
+        div.appendChild(ul);
+      }
+      semana.appendChild(div);
+    }
+
+    // --- Menú ---
+    const comidas = $('comidas');
+    comidas.innerHTML = '';
+    const momentos = [
+      ['Desayuno', plan.menu.desayuno],
+      ['Comida', plan.menu.comida],
+      ['Cena', plan.menu.cena],
+      ...plan.menu.snacks.map((s, i) => [`Snack ${i + 1}`, s]),
+    ];
+    for (const [momento, plato] of momentos) {
+      const div = document.createElement('div');
+      div.className = 'comida';
+      const mo = document.createElement('div');
+      mo.className = 'momento';
+      mo.textContent = momento;
+      const pl = document.createElement('div');
+      pl.className = 'plato';
+      pl.textContent = plato.nombre;
+      const ma = document.createElement('div');
+      ma.className = 'macro';
+      ma.textContent = `${plato.kcal} kcal · ${plato.prot} g de proteína`;
+      div.append(mo, pl, ma);
+      comidas.appendChild(div);
+    }
+
+    const resumen = $('resumen-menu');
+    resumen.innerHTML = '';
+    const linea1 = document.createElement('div');
+    linea1.textContent = `Total del día: ${plan.menu.kcal_total} kcal `
+      + `y ${plan.menu.proteina_total} g de proteína.`;
+    const linea2 = document.createElement('div');
+    linea2.style.cssText = 'font-size:0.83rem;color:var(--burdeos-claro);margin-top:7px';
+    linea2.textContent = plan.menu.ajuste_raciones;
+    resumen.append(linea1, linea2);
+
+    // --- Consejos ---
+    const cons = $('consejos');
+    cons.innerHTML = '';
+    for (const c of plan.consejos) {
+      const div = document.createElement('div');
+      div.className = 'consejo' + (c.tipo === 'aviso' ? ' aviso' : '');
+      const clase = document.createElement('span');
+      clase.className = 'clase';
+      clase.textContent = c.tipo === 'aviso' ? 'Atención'
+                        : c.tipo === 'adaptacion' ? 'Adaptado a ti' : 'Consejo';
+      const texto = document.createElement('span');
+      texto.textContent = c.texto;
+      div.append(clase, texto);
+      cons.appendChild(div);
+    }
+
+    $('aviso').textContent = plan.aviso;
+    $('plan').classList.remove('oculto');
+  }
+
+  arrancar();
+</script>
+</body>
+</html>

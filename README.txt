@@ -107,6 +107,11 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
     palos de los laterales parándose, temblando y arrancando los dos
     hacia arriba. Por ahora es solo estético.
 
+11. Se creó J0KER GYM (gym.py + /gym): el primer módulo de verdad más
+    allá del chat. Calcula calorías y macros, genera la rutina semanal
+    esquivando lesiones, propone menú y estima plazos realistas. Los
+    datos personales se guardan en una base local que no se sube.
+
 
 FICHEROS DEL PROYECTO
 ----------------------
@@ -118,8 +123,11 @@ FICHEROS DEL PROYECTO
 
   joker.py          El asistente en versión terminal. Contiene el "motor"
                     (el loop que habla con la IA), que la web reutiliza.
-  tools.py          Las habilidades de JOKER: hora, clima, matemáticas y
-                    búsqueda. No depende de ningún proveedor de IA.
+  tools.py          Las habilidades de JOKER: hora, clima, matemáticas,
+                    búsqueda y consultar el plan del gimnasio.
+                    No depende de ningún proveedor de IA.
+  gym.py            Todo el cálculo de J0KER GYM.
+  joker.db          Tus datos del gimnasio. Local, NO se sube a GitHub.
 
   joker_gemini.py   La misma idea con Gemini (Google). Referencia: dio
                     problemas de facturación, puede que no funcione ya.
@@ -179,6 +187,40 @@ Ya está puesta (static/joker.jpg). Si algún día quieres cambiarla, solo
 tiene que EMPEZAR por "joker" (mayúsculas o minúsculas da igual) y ser
 .png, .jpg, .jpeg, .webp o .gif — el nombre exacto no importa. Si no
 hay ninguna, sale un 🃏 en su lugar y todo lo demás sigue funcionando.
+
+
+J0KER GYM
+-----------
+
+Apartado de entrenamiento, en http://127.0.0.1:5000/gym (o pulsando
+"J0KER GYM" arriba a la derecha en el chat).
+
+Metes tus datos una vez (peso, altura, edad, objetivo, días que puedes
+entrenar y las limitaciones que tengas) y te calcula:
+
+  - Tus números: IMC, metabolismo basal, calorías de mantenimiento, las
+    calorías que te tocan según tu objetivo, macros y litros de agua.
+  - Cuánto vas a tardar en llegar a tu meta, a un ritmo sostenible. Si la
+    meta no es sana o es inalcanzable, te lo dice y te propone otra.
+  - La rutina de los 7 días, esquivando tus lesiones y adaptada al
+    material que tengas (o a no tener ninguno).
+  - Un menú del día que cuadra con tus calorías.
+  - Recomendaciones adaptadas a tu caso concreto.
+
+JOKER también lo conoce: puedes preguntarle por el chat "¿qué me toca
+entrenar hoy?" o "¿cuántas calorías tengo que comer?" y te lo lee de ahí,
+sin inventarse nada.
+
+Los datos se guardan en joker.db, un fichero local que NO se sube a
+GitHub (está en el .gitignore). Son tuyos y se quedan en tu ordenador.
+
+AVISO: los cálculos son orientativos, con fórmulas estándar (Mifflin-St
+Jeor). No son consejo médico.
+
+Nota sobre los somatotipos: la clasificación ectomorfo/mesomorfo/endomorfo
+es de los años 40 y la ciencia moderna no la respalda como predictor. Está
+incluida porque se usa mucho, pero solo ajusta un +-5%. Lo que manda de
+verdad es la fórmula de gasto calórico.
 
 
 EL SELECTOR DE POTENCIA
