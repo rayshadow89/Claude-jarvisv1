@@ -478,6 +478,162 @@ def search_web(query: str, lang: str = "es") -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tool 6: buscar_noticias — lo que está pasando hoy
+# ---------------------------------------------------------------------------
+# Wikipedia es una enciclopedia: sabe quién fue Nikola Tesla, no sabe qué pasó
+# ayer. Para lo del día a día hace falta otra fuente, y aquí se usa el RSS de
+# Google Noticias: es gratis, no pide ninguna clave, devuelve titulares de
+# medios de verdad con su fecha, y se puede pedir en español de España.
+#
+# Lo que devuelve son TITULARES con su medio y su fecha, no el artículo entero.
+# Es a propósito: con el titular, el medio y la fecha, JOKER puede contarte lo
+# que hay sin inventarse el contenido de una noticia que no ha leído.
+
+FUENTE_NOTICIAS = "https://news.google.com/rss"
+
+
+def _texto_rss(elemento, etiqueta: str, por_defecto: str = "") -> str:
+    """Saca el texto de una etiqueta hija, o el valor por defecto si no está."""
+    hijo = elemento.find(etiqueta)
+    if hijo is None or hijo.text is None:
+        return por_defecto
+    return hijo.text.strip()
+
+
+def _fecha_legible(pub_date: str) -> str:
+    """
+    Convierte la fecha del RSS (formato de correo) en algo que se lea.
+
+    Si no se puede interpretar, se devuelve tal cual: más vale una fecha fea
+    que perder el dato o reventar por una noticia con la fecha mal puesta.
+    """
+    from email.utils import parsedate_to_datetime
+
+    try:
+        momento = parsedate_to_datetime(pub_date)
+    except (TypeError, ValueError):
+        return pub_date
+
+    from datetime import datetime, timezone
+
+    ahora = datetime.now(timezone.utc)
+    if momento.tzinfo is None:
+        momento = momento.replace(tzinfo=timezone.utc)
+
+    horas = (ahora - momento).total_seconds() / 3600
+    if horas < 1:
+        cuando = "hace menos de una hora"
+    elif horas < 24:
+        cuando = f"hace {int(horas)} h"
+    elif horas < 48:
+        cuando = "ayer"
+    else:
+        cuando = f"hace {int(horas / 24)} días"
+
+    return f"{momento.strftime('%d/%m/%Y %H:%M')} ({cuando})"
+
+
+def _partir_titular(titulo: str, medio: str) -> tuple:
+    """
+    Google Noticias pone "Titular - Medio" en el título. Separamos las dos
+    cosas para poder enseñarlas ordenadas, sin repetir el medio dos veces.
+    """
+    if medio and titulo.endswith(f" - {medio}"):
+        return titulo[: -len(f" - {medio}")].strip(), medio
+    if " - " in titulo:
+        cabeza, _, cola = titulo.rpartition(" - ")
+        # Solo lo tratamos como medio si es corto: "Madrid - Barcelona" no lo es
+        if len(cola) <= 40:
+            return cabeza.strip(), cola.strip()
+    return titulo.strip(), medio
+
+
+def _analizar_noticias(xml_texto: str, tope: int) -> list:
+    """
+    Saca los titulares del XML del RSS.
+
+    Está separado de la descarga a propósito: así se puede probar el análisis
+    con un ejemplo guardado, sin depender de que haya internet.
+    """
+    import xml.etree.ElementTree as ET
+
+    try:
+        raiz = ET.fromstring(xml_texto)
+    except ET.ParseError as e:
+        raise ToolError(f"La respuesta de Google Noticias no se pudo leer: {e}") from e
+
+    noticias = []
+    for item in raiz.iter("item"):
+        titulo_bruto = _texto_rss(item, "title")
+        if not titulo_bruto:
+            continue
+        medio = _texto_rss(item, "source")
+        titular, medio = _partir_titular(titulo_bruto, medio)
+        noticias.append({
+            "titular": titular,
+            "medio": medio or "sin medio",
+            "fecha": _fecha_legible(_texto_rss(item, "pubDate")),
+            "enlace": _texto_rss(item, "link"),
+        })
+        if len(noticias) >= tope:
+            break
+    return noticias
+
+
+def buscar_noticias(tema: str = "", dias: int = 7, cuantas: int = 8) -> str:
+    """
+    Titulares de actualidad sobre un tema, o la portada si no se pide ninguno.
+
+    Es lo que le falta a search_web: Wikipedia sabe de historia, esto sabe de
+    hoy. Sale del RSS de Google Noticias, que es gratis y no pide clave.
+    """
+    import requests
+    import urllib.parse
+
+    cuantas = max(1, min(int(cuantas), 15))
+    dias = max(1, min(int(dias), 365))
+    tema = (tema or "").strip()
+
+    if tema:
+        consulta = urllib.parse.quote(f"{tema} when:{dias}d")
+        url = f"{FUENTE_NOTICIAS}/search?q={consulta}&hl=es&gl=ES&ceid=ES:es"
+        de_que = f"sobre '{tema}' (últimos {dias} días)"
+    else:
+        url = f"{FUENTE_NOTICIAS}?hl=es&gl=ES&ceid=ES:es"
+        de_que = "de portada"
+
+    try:
+        respuesta = requests.get(
+            url, timeout=12,
+            headers={"User-Agent": "JOKER-v1-proyecto-personal"},
+        )
+        respuesta.raise_for_status()
+    except requests.RequestException as e:
+        raise ToolError(
+            f"No pude conectar con Google Noticias para buscar {de_que}: {e}. "
+            "Puede ser que no haya internet, o que la fuente esté caída."
+        ) from e
+
+    noticias = _analizar_noticias(respuesta.text, cuantas)
+    if not noticias:
+        if tema:
+            raise ToolError(
+                f"No hay titulares {de_que}. Prueba con menos palabras, o amplía "
+                f"los días (ahora está en {dias})."
+            )
+        raise ToolError("Google Noticias no ha devuelto ningún titular de portada.")
+
+    lineas = [f"Titulares {de_que} (fuente: Google Noticias, hora de España):"]
+    for i, n in enumerate(noticias, start=1):
+        lineas.append(f"{i}. {n['titular']}  [{n['medio']}, {n['fecha']}]")
+    lineas.append(
+        "IMPORTANTE: esto son titulares, no artículos. Cuenta lo que dicen los "
+        "titulares y cita el medio; no te inventes detalles que no aparezcan aquí."
+    )
+    return "\n".join(lineas)
+
+
+# ---------------------------------------------------------------------------
 # Tool 5: consultar_gym — el plan de entrenamiento del usuario
 # ---------------------------------------------------------------------------
 
@@ -498,6 +654,29 @@ def consultar_gym() -> str:
         )
 
     return gym.resumen_texto(gym.plan_completo(perfil))
+
+
+# ---------------------------------------------------------------------------
+# Tool 7: consultar_gastos — las cuentas del mes
+# ---------------------------------------------------------------------------
+
+def consultar_gastos() -> str:
+    """
+    Devuelve el reparto del mes del usuario: cuánto ingresa, cuánto lleva
+    gastado, cómo va cada parte de su regla, sus deudas y los avisos. Lo mismo
+    que muestra la página /gastos, para que JOKER pueda hablarlo por el chat
+    sin inventarse una cifra.
+    """
+    import gastos  # import diferido: solo se carga si se usa esta tool
+
+    perfil = gastos.leer_perfil()
+    if not perfil:
+        raise ToolError(
+            "Todavía no hay cuentas guardadas. Dile al usuario que entre en la página "
+            "/gastos, ponga cuánto ingresa al mes y elija una regla de reparto."
+        )
+
+    return gastos.resumen_texto(gastos.panel_completo(perfil))
 
 
 # ---------------------------------------------------------------------------
@@ -591,7 +770,9 @@ TOOL_SCHEMAS = [
             "Busca información en internet sobre una persona, un lugar, un "
             "concepto o un evento. Úsala cuando el usuario pregunte algo que "
             "no sepas con certeza o pida buscar/investigar sobre un tema. "
-            "Nota: solo encuentra lo que hay en Wikipedia, no noticias de última hora."
+            "Solo encuentra lo que hay en Wikipedia: sirve para lo que ya es "
+            "historia (personas, lugares, conceptos, hechos pasados). Para lo "
+            "que está pasando ahora usa buscar_noticias."
         ),
         "parameters": {
             "type": "object",
@@ -604,6 +785,57 @@ TOOL_SCHEMAS = [
             "required": ["query"],
         },
     },
+    {
+        "name": "consultar_gastos",
+        "description": (
+            "Consulta las cuentas del usuario en J0KER GASTOS: lo que ingresa al mes, "
+            "lo que lleva gastado, cómo va cada parte de su regla de reparto "
+            "(50/30/20 y demás), si se está pasando, sus deudas y cuánto tardaría en "
+            "quitárselas. Úsala SIEMPRE que pregunte por su dinero, sus gastos, si "
+            "puede permitirse algo, cuánto lleva ahorrado este mes, sus deudas o su "
+            "presupuesto."
+        ),
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "buscar_noticias",
+        "description": (
+            "Busca TITULARES DE ACTUALIDAD de medios reales, con su fecha y su "
+            "medio. Úsala SIEMPRE que la pregunta vaya de algo de hoy, de esta "
+            "semana o de lo que está pasando: noticias, quién ha ganado algo, "
+            "cómo va un tema en marcha, qué se dice de alguien ahora mismo, "
+            "resultados recientes, o cuando el usuario pida 'ponme al día'. "
+            "search_web (Wikipedia) sirve para lo que ya es historia; esta, para "
+            "lo de ahora. Si dudas entre las dos y la pregunta tiene que ver con "
+            "el presente, usa esta. Devuelve titulares, NO artículos: cuenta lo "
+            "que dicen los titulares citando el medio, y no rellenes lo que falte."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "tema": {
+                    "type": "string",
+                    "description": (
+                        "Sobre qué. Pocas palabras funcionan mejor: 'incendios "
+                        "Galicia', 'Real Madrid', 'precio de la luz'. Déjalo "
+                        "vacío para la portada del día."
+                    ),
+                },
+                "dias": {
+                    "type": "integer",
+                    "description": (
+                        "Cuántos días hacia atrás mirar. 1 para hoy, 7 por "
+                        "defecto, 30 para el mes."
+                    ),
+                },
+                "cuantas": {
+                    "type": "integer",
+                    "description": "Cuántos titulares traer (1-15, por defecto 8).",
+                },
+            },
+            "required": [],
+        },
+    },
 ]
 
 TOOL_FUNCTIONS = {
@@ -611,7 +843,9 @@ TOOL_FUNCTIONS = {
     "get_weather": get_weather,
     "calculate": calculate,
     "search_web": search_web,
+    "buscar_noticias": buscar_noticias,
     "consultar_gym": consultar_gym,
+    "consultar_gastos": consultar_gastos,
 }
 
 

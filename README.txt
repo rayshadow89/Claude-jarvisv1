@@ -6,9 +6,17 @@ QUÉ ES
 ------
 
 Un asistente personal con IA que dice la hora y el clima de cualquier
-lugar del mundo, busca información y resuelve problemas de matemáticas.
-Se llamó "Jarvis" al principio; ahora es JOKER, con página web propia en
-burdeos y negro.
+lugar del mundo, busca información, cuenta lo que ha pasado hoy y resuelve
+problemas de matemáticas. Se llamó "Jarvis" al principio; ahora es JOKER,
+con página web propia en burdeos y negro.
+
+Y ya no es solo un chat: tiene cuatro salas, y cada una lleva su palo de la
+baraja para que sepas dónde estás antes de leer la palabra.
+
+  ♥  JOKER        el chat con la IA                 ->  /
+  ♠  J0KER GYM    entrenamiento y nutrición         ->  /gym
+  ♦  J0KER GASTOS tu dinero, repartido              ->  /gastos
+  ♣  INVERSIONES  de momento, solo el escenario     ->  /inversiones
 
 Se puede usar de dos formas:
   - Desde una página web con interfaz de chat  ->  python app.py
@@ -154,14 +162,51 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
     tocada salían en casi todas las líneas y tapaban lo importante.
 
 
+14. J0KER GASTOS (gastos.py + /gastos): la segunda sala de verdad. Metes
+    lo que ingresas, eliges cómo repartirlo (50/30/20, 70/20/10, los seis
+    frascos, 80/20 o 40/30/20/10), apuntas lo que gastas cada día y te
+    avisa con TUS cifras cuando el mes se va de las manos. Lleva simulador
+    de deudas comparando avalancha contra bola de nieve, y dos gráficas:
+    cómo va tu dinero durante el mes y un círculo con tu reparto, con los
+    porcentajes editables (si quieres ahorrar el 99%, te deja).
+
+15. Una tool nueva, buscar_noticias: titulares de actualidad de medios de
+    verdad, con su fecha y su medio. Sale del RSS de Google Noticias, que
+    es gratis y no pide clave. Wikipedia seguía siendo Wikipedia: sabe
+    quién fue Tesla, no sabe qué pasó ayer.
+
+16. Repaso de aspecto en toda la web: un CSS compartido (static/joker.css)
+    en vez de la paleta copiada en cada plantilla, botones con barrido de
+    luz al pasar por encima y hundimiento al pulsar, cada apartado con su
+    palo, cada día del gimnasio con su índice de carta en la esquina, los
+    días de descanso con el dorso de la baraja, los números grandes
+    contando hacia arriba, y un Joker flotante en todas las salas que te
+    devuelve al chat de un toque. Más un micrófono en el chat que todavía
+    NO graba: está puesto para cuando le toque, y al pulsarlo lo dice él
+    mismo en vez de quedarse mudo.
+
+17. La sala de inversiones, de momento vacía a propósito. Lo que sí está
+    terminado es cómo se entra: la web entera vira de burdeos a azul, el
+    halo de luz se va de arriba y aparece abajo, y los palos de los
+    laterales se paran y se tumban en dos franjas horizontales. Entre esas
+    dos franjas queda el marco donde irán las cotizaciones. Mientras
+    tanto, corren minigráficas de ejemplo en sentido contrario al de los
+    palos.
+
+
 FICHEROS DEL PROYECTO
 ----------------------
 
   app.py            El servidor de la página web. Es lo que ejecutas para
                     usar JOKER desde el navegador.
-  templates/        El diseño de las páginas: index.html (el chat),
-                    gym.html (J0KER GYM) y _palos.html (los carruseles
-                    de palos de la baraja, compartidos por las dos).
+  templates/        El diseño de las páginas:
+                      index.html        el chat
+                      gym.html          J0KER GYM
+                      gastos.html       J0KER GASTOS
+                      inversiones.html  la sala azul
+                      _palos.html       los carruseles de palos
+                      _salas.html       la navegación entre salas
+                      _joker_boton.html el Joker flotante
   static/           Imágenes. Aquí está joker.jpg (la mascota).
 
   joker.py          El asistente en versión terminal. Contiene el "motor"
@@ -170,7 +215,16 @@ FICHEROS DEL PROYECTO
                     búsqueda y consultar el plan del gimnasio.
                     No depende de ningún proveedor de IA.
   gym.py            Todo el cálculo de J0KER GYM.
-  joker.db          Tus datos del gimnasio. Local, NO se sube a GitHub.
+  gastos.py         Todo el cálculo de J0KER GASTOS: reglas de reparto,
+                    avisos y el simulador de deudas.
+  joker.db          Tus datos del gimnasio Y de tus cuentas. Local, NO se
+                    sube a GitHub.
+
+  static/joker.css  El estilo compartido por las cuatro salas: la paleta,
+                    la cabecera, las tarjetas, los botones y los campos.
+  static/gastos-graficas.js
+                    Las dos gráficas de la sala de gastos, hechas a mano
+                    con SVG (sin librerías).
 
   joker_gemini.py   La misma idea con Gemini (Google). Referencia: dio
                     problemas de facturación, puede que no funcione ya.
@@ -309,6 +363,78 @@ Metes tus datos una vez y te calcula:
     rango de peso saludable para tu altura.
 
 
+J0KER GASTOS
+--------------
+
+En http://127.0.0.1:5000/gastos (o pulsando ♦ GASTOS arriba).
+
+Dices cuánto te entra al mes, eliges cómo repartirlo, y a partir de ahí
+apuntas lo que vas gastando. Lo que te da:
+
+  EL MES
+    Cada parte de tu regla con lo que le toca y lo que llevas usado. La de
+    ahorro no se apunta: se calcula, porque el ahorro es lo que queda.
+
+  CÓMO VA TU DINERO
+    Una línea con lo que te va quedando día a día, frente al ritmo que
+    deberías llevar para acabar el mes con tu ahorro intacto. Y un círculo
+    con tu reparto: el anillo de fuera es lo que le toca a cada parte, el de
+    dentro lo que llevas. Los colores están comprobados para que se
+    distingan también con daltonismo, y la leyenda lleva nombre y cifra, así
+    que nunca dependes solo del color.
+
+  TUS PORCENTAJES
+    Los puedes mover a tu gusto. Lo único que se te pide es que sumen 100,
+    porque no se puede repartir más dinero del que entra. ¿Quieres ahorrar
+    el 99% y vivir con el 1%? Adelante: te dice cuánto sería al mes y al
+    año, y no te lo discute.
+
+  APUNTAR UN GASTO
+    Día, categoría, qué era e importe. Trece categorías, ni una más: con
+    treinta, elegir cuesta más que el propio gasto y acabas no apuntando.
+
+  DEUDAS
+    Cada deuda con su saldo, su interés y lo que pagas al mes. Te dice
+    cuánto te cuesta tenerla ahí quieta, y compara los dos métodos que
+    funcionan:
+      Avalancha      -> primero la de más interés. La que menos dinero cuesta.
+      Bola de nieve  -> primero la más pequeña. Cuesta algo más, pero tachas
+                        una antes, y eso es lo que hace que la gente siga.
+    Si pagas solo los mínimos te lo dice claro: los dos métodos dan
+    exactamente lo mismo, porque no hay dinero suelto que dirigir. Y si lo
+    que pagas no cubre ni los intereses, te avisa de que la deuda CRECE y de
+    que ningún método arregla eso.
+
+  LO QUE DEBERÍAS SABER
+    Los avisos. Con cifras tuyas o no se dicen: no vas a leer "controla tus
+    gastos", vas a leer cuánto te has pasado, en qué, y qué le cuesta eso a
+    tu ahorro. El ritmo de gasto se mide solo sobre lo variable, porque el
+    alquiler del día 1 no se repite y dividirlo entre los días daba sustos
+    que no eran de verdad.
+
+AVISO: esto es una hoja de cálculo con buenas intenciones, no asesoría
+financiera. Los intereses se calculan de forma simplificada (mensual sobre
+el saldo) y tu banco puede hacerlo distinto.
+
+
+INVERSIONES: LO QUE HAY Y LO QUE NO
+-------------------------------------
+
+En /inversiones. Ahora mismo NO trae ni un dato real, y es a propósito: es
+el sitio preparado para cuando lo traiga.
+
+Lo que sí está terminado es la entrada. Al abrirla, la web entera vira de
+burdeos a azul (no es otra hoja de estilos: es la misma, con el color de
+acento apuntando a otro sitio), el halo de luz se va de arriba y aparece
+abajo, y los palos de los laterales se paran y se tumban en dos franjas
+horizontales. Entre esas dos franjas queda el marco donde irán las
+cotizaciones.
+
+Las minigráficas que ves moverse son inventadas, y no lo disimulan: se
+llaman PICA, CORAZÓN, COMODÍN y demás, no como empresas de verdad, para que
+a nadie se le ocurra leerlas como una cotización.
+
+
 LAS LIMITACIONES, SIN SABER CUÁL MARCAR
 -----------------------------------------
 
@@ -329,15 +455,20 @@ contraindicado, ni como ejercicio ni como alternativa propuesta.
 JOKER TAMBIÉN LO CONOCE
 -------------------------
 
-Puedes preguntarle por el chat "¿qué me toca entrenar hoy?" o "¿cuántas
-calorías tengo que comer?" y te lo lee del plan, sin inventarse nada.
+Puedes preguntarle por el chat "¿qué me toca entrenar hoy?", "¿cuántas
+calorías tengo que comer?", "¿cuánto llevo gastado este mes?" o "¿puedo
+permitirme esto?" y te lo lee de tu plan y de tus cuentas, sin inventarse
+nada.
 
 
 DÓNDE SE GUARDAN TUS DATOS
 ----------------------------
 
-En joker.db, un fichero local en tu carpeta del proyecto. NO se sube a
-GitHub (está en el .gitignore). Son tuyos y se quedan en tu ordenador.
+En joker.db, un fichero local en tu carpeta del proyecto: tanto lo del
+gimnasio (peso, rutina, días hechos) como tus cuentas (sueldo, gastos,
+deudas). NO se sube a GitHub (está en el .gitignore). Son tuyos y se quedan
+en tu ordenador: lo de salud y lo de dinero son justo las dos cosas que no
+tienen por qué salir de ahí.
 
 AVISO: los cálculos son orientativos, con fórmulas estándar (Mifflin-St
 Jeor). No son consejo médico.
@@ -368,6 +499,19 @@ templates/index.html. Basta con mandarlo a /api/chat junto al mensaje y
 usarlo en app.py. Está comentado en el propio código.
 
 
+EL MICRÓFONO DEL CHAT
+-----------------------
+
+Está al lado del botón de enviar, y TODAVÍA NO GRABA. Es solo el sitio
+guardado para cuando toque conectarlo.
+
+Se ve apagado a propósito, y al pulsarlo te lo dice él mismo en vez de
+quedarse mudo: un botón que promete algo que no hace es peor que no
+tenerlo. Cuando llegue su turno, el enganche va en el manejador del clic
+de #microfono en templates/index.html, con la API de reconocimiento de voz
+del navegador.
+
+
 EL CLIMA
 --------
 
@@ -387,14 +531,32 @@ la humedad y el viento. Si quieres los grados en Fahrenheit, solo tienes
 que pedírselo.
 
 
-LA BÚSQUEDA WEB, EN HONESTIDAD
---------------------------------
+LO QUE JOKER SABE DEL MUNDO
+-----------------------------
 
-La tool de búsqueda usa la Wikipedia, no un buscador de verdad. Sirve para
-"qué es X" o "quién fue X", pero no para noticias del día de hoy. Es la
-opción que hemos elegido porque es gratis y no necesita clave. Si más
-adelante quieres búsqueda real de internet, se puede sustituir por un
-servicio como Tavily o Serper (tienen capa gratuita, pero piden registro).
+Hay DOS tools de buscar, y cada una sirve para una cosa distinta:
+
+  search_web (Wikipedia)
+    Para lo que ya es historia: quién fue Nikola Tesla, qué es la fotosíntesis,
+    dónde está Katmandú. Es una enciclopedia, así que no sabe qué pasó ayer.
+
+  buscar_noticias (RSS de Google Noticias)
+    Para lo de AHORA: qué ha pasado hoy, cómo va un tema en marcha, quién ha
+    ganado qué. Devuelve titulares de medios de verdad con su medio y su
+    fecha, en español de España.
+
+    Pídeselo con normalidad: "¿qué ha pasado hoy?", "ponme al día de los
+    incendios", "¿cómo va el precio de la luz?".
+
+    Lo que trae son TITULARES, no los artículos. JOKER tiene orden de contar
+    lo que dicen los titulares citando el medio, y de NO rellenar con
+    detalles del artículo, porque no lo ha leído. Es peor un resumen
+    inventado que un titular escueto.
+
+Las dos son gratis y no piden ninguna clave, que es la condición de todo
+este proyecto. Si algún día quieres un buscador de verdad (páginas enteras,
+no titulares), se puede añadir con Tavily o Serper: tienen capa gratuita,
+pero piden registro.
 
 
 CÓMO AÑADIRLE HABILIDADES NUEVAS

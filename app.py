@@ -30,6 +30,7 @@ from pathlib import Path
 import openai
 from flask import Flask, jsonify, render_template, request, send_from_directory, session
 
+import gastos
 import gym
 import joker
 
@@ -386,6 +387,260 @@ def gym_interpretar_limitaciones():
     datos = request.get_json(silent=True) or {}
     texto = str(datos.get("texto", ""))[:500]
     return jsonify(gym.interpretar_limitaciones(texto))
+
+
+# ---------------------------------------------------------------------------
+# J0KER GASTOS  (el dinero)
+# ---------------------------------------------------------------------------
+
+@app.get("/gastos")
+def pagina_gastos():
+    return render_template("gastos.html")
+
+
+@app.get("/api/gastos/opciones")
+def gastos_opciones():
+    """Reglas de reparto y categorías, para pintar el formulario."""
+    return jsonify({
+        "reglas": {
+            clave: {
+                "nombre": r["nombre"], "autor": r["autor"], "resumen": r["resumen"],
+                "para_quien": r["para_quien"],
+                "partes": [
+                    {"clave": p["clave"], "nombre": p["nombre"], "pct": p["pct"],
+                     "tipo": p["tipo"], "explica": p["explica"],
+                     "categorias": [gastos.CATEGORIAS[c] for c in p["categorias"]]}
+                    for p in r["partes"]
+                ],
+            }
+            for clave, r in gastos.REGLAS.items()
+        },
+        "categorias": gastos.CATEGORIAS,
+        "categorias_fijas": sorted(gastos.CATEGORIAS_FIJAS),
+        "mes_actual": gastos.mes_actual(),
+    })
+
+
+@app.get("/api/gastos/panel")
+def gastos_panel():
+    """Todo el panel: reparto, avisos, deudas y datos de las gráficas."""
+    perfil = gastos.leer_perfil()
+    if not perfil:
+        return jsonify({"hay_perfil": False, "mes_actual": gastos.mes_actual()})
+
+    mes = request.args.get("mes") or None
+    if mes and not _mes_valido(mes):
+        return jsonify({"error": "Ese mes no tiene buena pinta (formato AAAA-MM)."}), 400
+
+    try:
+        extra = max(0.0, float(request.args.get("extra", 0) or 0))
+    except ValueError:
+        extra = 0.0
+
+    return jsonify({"hay_perfil": True,
+                    "panel": gastos.panel_completo(perfil, mes, extra)})
+
+
+def _mes_valido(mes: str) -> bool:
+    from datetime import date
+    try:
+        anio, numero = (int(x) for x in str(mes).split("-"))
+        date(anio, numero, 1)
+        return 1970 <= anio <= 2200
+    except (ValueError, TypeError):
+        return False
+
+
+@app.post("/api/gastos/perfil")
+def gastos_guardar_perfil():
+    """Cuánto entra al mes y con qué regla se reparte."""
+    datos = request.get_json(silent=True) or {}
+
+    try:
+        ingreso = float(datos.get("ingreso", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "El ingreso tiene que ser un número."}), 400
+
+    if not (0 < ingreso <= 10_000_000):
+        return jsonify({"error": "El ingreso mensual tiene que ser mayor que 0."}), 400
+
+    regla = str(datos.get("regla", "50_30_20"))
+    if regla not in gastos.REGLAS:
+        return jsonify({"error": "Esa regla de reparto no existe."}), 400
+
+    # Los repartos que ya hubiera tocado a mano se conservan: cambiar de sueldo
+    # no debería borrarte los porcentajes que ajustaste.
+    anterior = gastos.leer_perfil() or {}
+    perfil = {
+        "ingreso": round(ingreso, 2),
+        "regla": regla,
+        "repartos": anterior.get("repartos", {}),
+    }
+    gastos.guardar_perfil(perfil)
+    return jsonify({"hay_perfil": True, "panel": gastos.panel_completo(perfil)})
+
+
+@app.post("/api/gastos/reparto")
+def gastos_guardar_reparto():
+    """
+    Cambia los porcentajes de la regla actual.
+
+    La única condición es que sumen 100: si quieres ahorrar el 99% y vivir con
+    el 1%, allá tú, pero el dinero que repartes no puede ser más (ni menos) del
+    que entra.
+    """
+    perfil = gastos.leer_perfil()
+    if not perfil:
+        return jsonify({"error": "Primero dime cuánto ingresas al mes."}), 400
+
+    datos = request.get_json(silent=True) or {}
+    clave_regla = perfil.get("regla", "50_30_20")
+    partes_validas = {p["clave"] for p in gastos.REGLAS[clave_regla]["partes"]}
+
+    recibido = datos.get("porcentajes") or {}
+    if not isinstance(recibido, dict):
+        return jsonify({"error": "Formato de porcentajes incorrecto."}), 400
+
+    limpio = {}
+    for clave, valor in recibido.items():
+        if clave not in partes_validas:
+            return jsonify({"error": f"La parte '{clave}' no es de esta regla."}), 400
+        try:
+            numero = float(valor)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Los porcentajes tienen que ser números."}), 400
+        if not (0 <= numero <= 100):
+            return jsonify({"error": "Cada porcentaje va entre 0 y 100."}), 400
+        limpio[clave] = round(numero, 2)
+
+    if set(limpio) != partes_validas:
+        return jsonify({"error": "Faltan partes por repartir."}), 400
+
+    suma = round(sum(limpio.values()), 2)
+    if abs(suma - 100) > 0.01:
+        return jsonify({
+            "error": f"Tus porcentajes suman {suma:g}%, y tienen que sumar 100%. "
+                     f"{'Te sobra' if suma > 100 else 'Te falta'} {abs(suma - 100):g}%."
+        }), 400
+
+    perfil.setdefault("repartos", {})[clave_regla] = limpio
+    gastos.guardar_perfil(perfil)
+    return jsonify({"ok": True, "panel": gastos.panel_completo(perfil)})
+
+
+@app.delete("/api/gastos/reparto")
+def gastos_restaurar_reparto():
+    """Vuelve a los porcentajes originales de la regla."""
+    perfil = gastos.leer_perfil()
+    if not perfil:
+        return jsonify({"error": "Aún no hay perfil."}), 400
+    (perfil.get("repartos") or {}).pop(perfil.get("regla", "50_30_20"), None)
+    gastos.guardar_perfil(perfil)
+    return jsonify({"ok": True, "panel": gastos.panel_completo(perfil)})
+
+
+@app.post("/api/gastos/gasto")
+def gastos_apuntar():
+    """Apunta un gasto de un día concreto."""
+    from datetime import date
+
+    datos = request.get_json(silent=True) or {}
+    perfil = gastos.leer_perfil()
+    if not perfil:
+        return jsonify({"error": "Primero dime cuánto ingresas al mes."}), 400
+
+    fecha = (datos.get("fecha") or "").strip()
+    try:
+        date.fromisoformat(fecha)
+    except ValueError:
+        return jsonify({"error": "La fecha no es válida."}), 400
+
+    categoria = str(datos.get("categoria", ""))
+    if categoria not in gastos.CATEGORIAS:
+        return jsonify({"error": "Esa categoría no existe."}), 400
+
+    try:
+        importe = float(datos.get("importe"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "El importe tiene que ser un número."}), 400
+
+    if not (0 < importe <= 1_000_000):
+        return jsonify({"error": "El importe tiene que ser mayor que 0."}), 400
+
+    concepto = str(datos.get("concepto", "")).strip()[:80]
+    gastos.apuntar_gasto(fecha, categoria, concepto, importe)
+
+    mes = fecha[:7]
+    return jsonify({"ok": True, "panel": gastos.panel_completo(perfil, mes)})
+
+
+@app.delete("/api/gastos/gasto/<int:id_gasto>")
+def gastos_borrar_gasto(id_gasto):
+    perfil = gastos.leer_perfil()
+    if not perfil:
+        return jsonify({"error": "Aún no hay perfil."}), 400
+    mes = request.args.get("mes") if _mes_valido(request.args.get("mes") or "") else None
+    gastos.borrar_gasto(id_gasto)
+    return jsonify({"ok": True, "panel": gastos.panel_completo(perfil, mes)})
+
+
+@app.post("/api/gastos/deuda")
+def gastos_guardar_deuda():
+    datos = request.get_json(silent=True) or {}
+    perfil = gastos.leer_perfil()
+    if not perfil:
+        return jsonify({"error": "Primero dime cuánto ingresas al mes."}), 400
+
+    nombre = str(datos.get("nombre", "")).strip()[:60]
+    if not nombre:
+        return jsonify({"error": "Ponle nombre a la deuda."}), 400
+
+    try:
+        saldo = float(datos.get("saldo"))
+        interes = float(datos.get("interes", 0))
+        minimo = float(datos.get("pago_minimo", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "El saldo, el interés y el pago tienen que ser números."}), 400
+
+    if not (0 < saldo <= 100_000_000):
+        return jsonify({"error": "El saldo pendiente tiene que ser mayor que 0."}), 400
+    if not (0 <= interes <= 200):
+        return jsonify({"error": "El interés anual va entre 0 y 200%."}), 400
+    if not (0 <= minimo <= 10_000_000):
+        return jsonify({"error": "El pago mensual no puede ser negativo."}), 400
+
+    gastos.guardar_deuda(nombre, saldo, interes, minimo)
+    return jsonify({"ok": True, "panel": gastos.panel_completo(perfil)})
+
+
+@app.delete("/api/gastos/deuda/<int:id_deuda>")
+def gastos_borrar_deuda(id_deuda):
+    perfil = gastos.leer_perfil()
+    if not perfil:
+        return jsonify({"error": "Aún no hay perfil."}), 400
+    gastos.borrar_deuda(id_deuda)
+    return jsonify({"ok": True, "panel": gastos.panel_completo(perfil)})
+
+
+@app.post("/api/gastos/borrar")
+def gastos_borrar_todo():
+    """Empezar de cero: perfil, gastos y deudas."""
+    gastos.borrar_todo()
+    return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# J0KER INVERSIONES  (por ahora, solo el escenario)
+# ---------------------------------------------------------------------------
+
+@app.get("/inversiones")
+def pagina_inversiones():
+    """
+    De momento esta página no trae datos: es el sitio preparado para cuando
+    los traiga. La transición a azul, los palos girando a horizontal y el
+    marco donde irán las cotizaciones ya están; lo que falta es el contenido.
+    """
+    return render_template("inversiones.html")
 
 
 @app.post("/api/nueva")

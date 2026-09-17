@@ -1,0 +1,27 @@
+{#
+  El Joker que flota abajo a la derecha: un toque y estás hablando con la IA.
+
+  Va en todas las páginas MENOS en el chat, que es a donde lleva.
+
+  Lleva la carta de comodín y no la foto de la mascota a propósito: la mascota
+  es un JPG con fondo, y a 30 píxeles cualquier filtro para teñirla acababa
+  pintando el fondo también y saliendo un rectángulo. La carta se ve igual de
+  nítida en cualquier tamaño y hereda el color de la página sola.
+#}
+<a href="/" class="joker-flota" id="joker-flota" title="Hablar con JOKER"
+   aria-label="Ir al chat con JOKER">
+  <span class="joker-carta" aria-hidden="true">&#127183;</span>
+  <span class="globito">Pregúntame lo que sea</span>
+</a>
+<style>
+  .joker-flota .joker-carta {
+    font-size: 1.9rem; line-height: 1;
+    /* Sin filtros: la carta del comodín ya viene con sus colores, y cualquier
+       intento de teñirla la dejaba en un rectángulo blanco. Solo una sombra
+       para despegarla del círculo. */
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
+  }
+  @media (max-width: 620px) {
+    .joker-flota .joker-carta { font-size: 1.5rem; }
+  }
+</style>
