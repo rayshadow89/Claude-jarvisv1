@@ -29,12 +29,18 @@
        desaparezcan en vez de cortarse de golpe */
     -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
             mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
-    /* Para que el paso a horizontal sea un movimiento y no un corte */
-    transition: width 1.3s cubic-bezier(.65,.05,.36,1),
-                height 1.3s cubic-bezier(.65,.05,.36,1),
-                top 1.3s cubic-bezier(.65,.05,.36,1),
-                opacity 0.6s ease;
+    /* Solo se animan transform y opacity, que son las dos cosas que el
+       navegador mueve sin rehacer la página. Antes aquí se animaban width,
+       height y top, y de ahí venían los tirones. */
+    transition: transform 0.6s cubic-bezier(.55,.06,.68,.19),
+                opacity 0.5s ease;
   }
+
+  /* Salir de escena: cada columna se va por el borde que tiene más cerca.
+     Lo usa la página de inversiones para dejar sitio a las franjas. */
+  .palos.fuera { opacity: 0; }
+  .palos.izquierda.fuera { transform: translateX(-115%); }
+  .palos.derecha.fuera   { transform: translateX(115%); }
   .palos.izquierda { left: 0; }
   .palos.derecha   { right: 0; }
 
@@ -81,59 +87,6 @@
   @media (max-width: 1080px) {
     .palos { display: none; }
   }
-
-  /* ---------- Modo horizontal ---------- */
-  /*
-    Las dos columnas se tumban: la izquierda pasa a ser una franja arriba y la
-    derecha otra abajo, y entre las dos queda un hueco limpio. Ese hueco es el
-    marco de la página de inversiones.
-
-    El truco para que la transición se vea y no salte: las medidas (width,
-    height, top, left) SÍ se pueden animar, así que la columna se estira hasta
-    ocupar el ancho entero mientras encoge de alto. Lo que no se puede animar
-    es cambiar la dirección de un flex, así que la pista pasa a fila de golpe
-    en mitad del recorrido, cuando la franja ya es tan baja que no se nota.
-  */
-  .palos.horizontal {
-    top: auto; left: 0; right: 0;
-    width: 100%; height: 86px;
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
-            mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
-  }
-  .palos.horizontal.izquierda { top: 78px; }
-  .palos.horizontal.derecha   { bottom: 0; }
-
-  .palos.horizontal .palos-pista {
-    flex-direction: row;
-    align-items: center;
-    gap: 54px;
-    padding: 0 24px;
-    height: 100%;
-  }
-  /* Arriba van hacia la derecha y abajo hacia la izquierda: en sentidos
-     contrarios, igual que hacían en vertical. */
-  .palos.horizontal.izquierda .palos-pista { animation: hacia-la-derecha 46s linear infinite; }
-  .palos.horizontal.derecha   .palos-pista { animation: hacia-la-izquierda 46s linear infinite; }
-
-  @keyframes hacia-la-izquierda {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
-  }
-  @keyframes hacia-la-derecha {
-    from { transform: translateX(-50%); }
-    to   { transform: translateX(0); }
-  }
-
-  /* La parada antes de girar: se quedan quietos un momento, como una mano de
-     cartas que se detiene antes de extenderse sobre la mesa. */
-  .palos.parados .palos-pista { animation-play-state: paused; }
-
-  /* En horizontal sí caben en pantallas estrechas: no roban ancho, solo alto */
-  @media (max-width: 1080px) {
-    .palos.horizontal { display: block; height: 62px; }
-    .palos.horizontal.izquierda { top: 64px; }
-    .palos.horizontal .palo { font-size: 22px; }
-  }
 </style>
 
 <!-- Carruseles decorativos de palos de la baraja: bajan por la izquierda
@@ -144,32 +97,36 @@
 <script>
   // Generamos los símbolos por JavaScript en vez de escribirlos a mano en el
   // HTML: son decenas de elementos repetidos y así el HTML queda limpio.
-  (function montarPalos() {
+  //
+  // Queda colgado de window porque otras páginas montan sus propias pistas de
+  // palos (la de inversiones, sus franjas horizontales) y no tiene sentido
+  // repetir este bucle en cada una.
+  window.rellenarPalos = function (pista, indice, repeticiones) {
     const PALOS = [
-      { simbolo: '♠', clase: 'negro' },  // pica
-      { simbolo: '♥', clase: 'rojo'  },  // corazon
-      { simbolo: '♦', clase: 'rojo'  },  // diamante
-      { simbolo: '♣', clase: 'negro' },  // trebol
+      { simbolo: '\u2660', clase: 'negro' },  // pica
+      { simbolo: '\u2665', clase: 'rojo'  },  // corazon
+      { simbolo: '\u2666', clase: 'rojo'  },  // diamante
+      { simbolo: '\u2663', clase: 'negro' },  // trebol
     ];
-    const REPETICIONES = 10;  // suficientes para cubrir pantallas altas
+    const veces = repeticiones || 10;   // suficientes para cubrir la pantalla
+    const grupo = document.createDocumentFragment();
 
-    document.querySelectorAll('.palos-pista').forEach((pista, indice) => {
-      const grupo = document.createDocumentFragment();
+    for (let v = 0; v < veces; v++) {
+      PALOS.forEach((palo, i) => {
+        const span = document.createElement('span');
+        span.className = 'palo ' + palo.clase;
+        span.textContent = palo.simbolo;
+        // Desfase distinto en cada pista para que no vayan sincronizadas
+        if ((v + i + indice) % 2 === 0) span.style.transform = 'scale(0.78)';
+        grupo.appendChild(span);
+      });
+    }
 
-      for (let v = 0; v < REPETICIONES; v++) {
-        PALOS.forEach((palo, i) => {
-          const span = document.createElement('span');
-          span.className = 'palo ' + palo.clase;
-          span.textContent = palo.simbolo;
-          // Desfase distinto en cada lado para que no vayan sincronizados
-          if ((v + i + indice) % 2 === 0) span.style.transform = 'scale(0.78)';
-          grupo.appendChild(span);
-        });
-      }
+    // La pista se duplica: al desplazar el 50% el bucle encaja sin salto.
+    pista.appendChild(grupo.cloneNode(true));
+    pista.appendChild(grupo);
+  };
 
-      // La pista se duplica: al desplazar el 50% el bucle encaja sin salto.
-      pista.appendChild(grupo.cloneNode(true));
-      pista.appendChild(grupo);
-    });
-  })();
+  document.querySelectorAll('.palos-pista').forEach(
+    (pista, indice) => window.rellenarPalos(pista, indice));
 </script>
