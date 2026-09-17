@@ -1,0 +1,28 @@
+{#
+  La navegación entre las salas de JOKER.
+
+  Cada sala lleva su palo de la baraja, y no por decorar: el palo se reconoce
+  antes que la palabra, así que de un vistazo sabes dónde estás.
+
+      ♥  JOKER        el chat, el corazón de todo
+      ♠  GYM          picas, que es la espada: la fuerza
+      ♦  GASTOS       diamantes, que siempre fueron el dinero
+      ♣  INVERSIONES  tréboles, que son la suerte y lo que crece
+
+  Se usa así, pasándole cuál es la sala actual:
+      {% with sala='gym' %}{% include '_salas.html' %}{% endwith %}
+#}
+<nav class="salas" aria-label="Secciones de JOKER">
+  <a href="/" class="sala roja {{ 'aqui' if sala == 'chat' }}"
+     {% if sala == 'chat' %}aria-current="page"{% endif %}>
+    <span class="palo-sala" aria-hidden="true">&hearts;</span>JOKER</a>
+  <a href="/gym" class="sala {{ 'aqui' if sala == 'gym' }}"
+     {% if sala == 'gym' %}aria-current="page"{% endif %}>
+    <span class="palo-sala" aria-hidden="true">&spades;</span>GYM</a>
+  <a href="/gastos" class="sala roja {{ 'aqui' if sala == 'gastos' }}"
+     {% if sala == 'gastos' %}aria-current="page"{% endif %}>
+    <span class="palo-sala" aria-hidden="true">&diams;</span>GASTOS</a>
+  <a href="/inversiones" class="sala verde {{ 'aqui' if sala == 'inversiones' }}"
+     {% if sala == 'inversiones' %}aria-current="page"{% endif %}>
+    <span class="palo-sala" aria-hidden="true">&clubs;</span>INVERSIONES</a>
+</nav>

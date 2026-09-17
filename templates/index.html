@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/joker.css">
 <style>
   :root {
     --negro:          #0a0708;
@@ -235,6 +236,12 @@
     0%, 60%, 100% { opacity: 0.28; transform: translateY(0); }
     30%           { opacity: 1;    transform: translateY(-5px); }
   }
+  /* Con menos movimiento, los puntitos se quedan quietos y visibles: la regla
+     general solo acorta duraciones, y acortar un latido infinito lo convierte
+     en un parpadeo, que es justo lo que se quería evitar. */
+  @media (prefers-reduced-motion: reduce) {
+    .pensando span { animation: none !important; opacity: 0.75; }
+  }
 
   /* ---------- Barra de escritura ---------- */
   .barra {
@@ -291,6 +298,50 @@
   }
   .enviar:disabled { opacity: 0.4; cursor: not-allowed; }
   .enviar svg { width: 18px; height: 18px; fill: currentColor; }
+
+  .acciones-cabecera {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .acciones-cabecera .salas { margin-left: 0; }
+
+  /* ---------- El micrófono ---------- */
+  /* Todavía no graba. Se ve apagado a propósito: un botón que promete algo
+     que no hace es peor que no tenerlo, así que este dice desde el aspecto
+     que aún no le toca. */
+  .microfono {
+    background: var(--negro-elevado);
+    border: 1px solid var(--borde);
+    color: var(--texto-suave);
+    width: 40px; height: 40px; border-radius: 10px;
+    cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.18s ease;
+    position: relative;
+  }
+  .microfono svg { width: 18px; height: 18px; fill: currentColor; }
+  .microfono:hover { border-color: var(--burdeos); color: var(--texto);
+    background: rgba(125, 24, 50, 0.16); }
+  .microfono:active { transform: translateY(1px) scale(0.97); }
+
+  /* Al pulsarlo late un momento, para que se note que ha recibido el toque
+     aunque lo que conteste sea "todavía no". */
+  .microfono.intentando { animation: mic-late 0.5s ease; }
+  @keyframes mic-late {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(195, 48, 85, 0); }
+    45%      { box-shadow: 0 0 0 7px rgba(195, 48, 85, 0.22); }
+  }
+
+  .microfono .globito-mic {
+    position: absolute; bottom: 52px; right: -4px;
+    background: var(--negro-elevado); border: 1px solid var(--burdeos);
+    color: var(--texto); font-size: 0.74rem; line-height: 1.45;
+    padding: 8px 12px; border-radius: 9px; width: 214px; text-align: left;
+    opacity: 0; pointer-events: none; transform: translateY(5px);
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 6;
+  }
+  .microfono.avisando .globito-mic { opacity: 1; transform: translateY(0); }
 
   .pie {
     text-align: center;
@@ -457,12 +508,14 @@
       <h1>JOKER</h1>
       <div class="slogan">Last Card</div>
     </div>
-    <a href="/gym" class="btn-nueva" id="btn-gym" title="Tu plan de entrenamiento"
-       style="margin-left:auto;text-decoration:none">J0KER GYM</a>
-    <button class="btn-nueva" id="btn-nueva" title="Empezar una conversación nueva"
-            style="margin-left:8px">
-      Nueva partida
-    </button>
+    <!-- Las salas y "Nueva partida" van juntas a la derecha: si se separan,
+         la cabecera parte en dos líneas en cuanto la ventana se estrecha. -->
+    <div class="acciones-cabecera">
+      {% with sala='chat' %}{% include '_salas.html' %}{% endwith %}
+      <button class="btn-nueva" id="btn-nueva" title="Empezar una conversación nueva">
+        Nueva partida
+      </button>
+    </div>
   </header>
 
   <div id="chat">
@@ -472,6 +525,7 @@
         <button class="ejemplo">¿Qué hora es en Tokio?</button>
         <button class="ejemplo">Cuánto es (45 * 8) / 3</button>
         <button class="ejemplo">Busca información sobre Nikola Tesla</button>
+        <button class="ejemplo">¿Qué ha pasado hoy en España?</button>
       </div>
     </div>
   </div>
@@ -479,6 +533,21 @@
   <div class="barra">
     <div class="campo">
       <textarea id="entrada" rows="1" placeholder="Escribe tu mensaje..." autofocus></textarea>
+      <!-- El micrófono todavía NO graba nada: está puesto para que el sitio
+           exista cuando toque conectarlo. Al pulsarlo lo dice él mismo, en
+           vez de quedarse mudo y parecer que está roto. -->
+      <button class="microfono" id="microfono" type="button"
+              title="Hablar con JOKER (todavía no funciona)"
+              aria-label="Hablar con JOKER: todavía no está disponible">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
+          <path d="M17 11a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/>
+        </svg>
+        <span class="globito-mic" id="globito-mic" role="status">
+          Todavía no puedo escucharte. El botón está puesto para cuando le
+          toque; de momento, escríbeme.
+        </span>
+      </button>
       <button class="enviar" id="enviar" title="Enviar">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
@@ -640,6 +709,20 @@
   });
 
   btnEnviar.addEventListener('click', enviar);
+
+  // ---------- El micrófono (de momento, solo el gesto) ----------
+  // Cuando llegue el turno de que funcione, aquí es donde entra la API de
+  // reconocimiento de voz del navegador. Hasta entonces, al menos contesta.
+  const btnMic = document.getElementById('microfono');
+  let avisoMic = null;
+  btnMic.addEventListener('click', () => {
+    btnMic.classList.remove('intentando');
+    void btnMic.offsetWidth;          // reinicia la animación si repites
+    btnMic.classList.add('intentando', 'avisando');
+    clearTimeout(avisoMic);
+    avisoMic = setTimeout(() => btnMic.classList.remove('avisando'), 3200);
+    entrada.focus();
+  });
 
   document.querySelectorAll('.ejemplo').forEach(b => {
     b.addEventListener('click', () => {

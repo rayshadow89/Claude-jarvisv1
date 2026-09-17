@@ -29,6 +29,11 @@
        desaparezcan en vez de cortarse de golpe */
     -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
             mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+    /* Para que el paso a horizontal sea un movimiento y no un corte */
+    transition: width 1.3s cubic-bezier(.65,.05,.36,1),
+                height 1.3s cubic-bezier(.65,.05,.36,1),
+                top 1.3s cubic-bezier(.65,.05,.36,1),
+                opacity 0.6s ease;
   }
   .palos.izquierda { left: 0; }
   .palos.derecha   { right: 0; }
@@ -51,7 +56,8 @@
   /* Picas y tréboles: en gris muy tenue, como la tinta negra de una carta */
   .palo.negro { color: #8a757c; opacity: 0.42; }
   /* Corazones y diamantes: en burdeos, a juego con la web */
-  .palo.rojo  { color: var(--burdeos-vivo); opacity: 0.5; }
+  .palo.rojo  { color: var(--acento-vivo, var(--burdeos-vivo)); opacity: 0.5;
+    transition: color 1.1s ease; }
 
   /* Recorre media pista: como la lista está duplicada, el salto es invisible */
   @keyframes subir {
@@ -63,14 +69,70 @@
     to   { transform: translateY(0); }
   }
 
-  /* Respeta a quien tenga desactivadas las animaciones en su sistema */
+  /* Respeta a quien tenga desactivadas las animaciones en su sistema.
+     Con !important porque la regla general de joker.css solo ACORTA las
+     duraciones, y acortar una animación infinita la convierte en un
+     parpadeo: aquí hay que quitarla entera. */
   @media (prefers-reduced-motion: reduce) {
-    .palos-pista { animation: none; }
+    .palos-pista { animation: none !important; }
   }
 
   /* En pantallas estrechas no hay sitio: se ocultan para no molestar */
   @media (max-width: 1080px) {
     .palos { display: none; }
+  }
+
+  /* ---------- Modo horizontal ---------- */
+  /*
+    Las dos columnas se tumban: la izquierda pasa a ser una franja arriba y la
+    derecha otra abajo, y entre las dos queda un hueco limpio. Ese hueco es el
+    marco de la página de inversiones.
+
+    El truco para que la transición se vea y no salte: las medidas (width,
+    height, top, left) SÍ se pueden animar, así que la columna se estira hasta
+    ocupar el ancho entero mientras encoge de alto. Lo que no se puede animar
+    es cambiar la dirección de un flex, así que la pista pasa a fila de golpe
+    en mitad del recorrido, cuando la franja ya es tan baja que no se nota.
+  */
+  .palos.horizontal {
+    top: auto; left: 0; right: 0;
+    width: 100%; height: 86px;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+            mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  }
+  .palos.horizontal.izquierda { top: 78px; }
+  .palos.horizontal.derecha   { bottom: 0; }
+
+  .palos.horizontal .palos-pista {
+    flex-direction: row;
+    align-items: center;
+    gap: 54px;
+    padding: 0 24px;
+    height: 100%;
+  }
+  /* Arriba van hacia la derecha y abajo hacia la izquierda: en sentidos
+     contrarios, igual que hacían en vertical. */
+  .palos.horizontal.izquierda .palos-pista { animation: hacia-la-derecha 46s linear infinite; }
+  .palos.horizontal.derecha   .palos-pista { animation: hacia-la-izquierda 46s linear infinite; }
+
+  @keyframes hacia-la-izquierda {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  @keyframes hacia-la-derecha {
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(0); }
+  }
+
+  /* La parada antes de girar: se quedan quietos un momento, como una mano de
+     cartas que se detiene antes de extenderse sobre la mesa. */
+  .palos.parados .palos-pista { animation-play-state: paused; }
+
+  /* En horizontal sí caben en pantallas estrechas: no roban ancho, solo alto */
+  @media (max-width: 1080px) {
+    .palos.horizontal { display: block; height: 62px; }
+    .palos.horizontal.izquierda { top: 64px; }
+    .palos.horizontal .palo { font-size: 22px; }
   }
 </style>
 

@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J0KER GASTOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/joker.css">
+<style>
+  /* =====================================================================
+     J0KER GASTOS — lo propio de esta sala
+     La paleta, la cabecera, las tarjetas y los botones vienen de joker.css.
+     ===================================================================== */
+
+  body { padding-bottom: 90px; }
+
+  .mascota {
+    filter: invert(19%) sepia(64%) saturate(2800%) hue-rotate(325deg)
+            brightness(94%) contrast(96%)
+            drop-shadow(0 0 14px rgba(195, 48, 85, 0.45));
+  }
+
+  /* ---------- Las reglas de reparto ---------- */
+  .reglas { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .regla {
+    background: var(--negro-carta); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 15px 16px; cursor: pointer;
+    text-align: left; font-family: inherit; color: var(--texto);
+    transition: all 0.18s ease; position: relative; overflow: hidden;
+  }
+  .regla:hover { border-color: var(--burdeos); transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+  .regla.elegida { border-color: var(--burdeos-vivo);
+    background: linear-gradient(160deg, rgba(125,24,50,0.22), var(--negro-carta) 78%); }
+  .regla .nombre { font-family: 'Cinzel', Georgia, serif; font-size: 1rem;
+    letter-spacing: 0.08em; color: #fff; margin-bottom: 3px; }
+  .regla .autor { font-size: 0.68rem; color: var(--burdeos-claro);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .regla .resumen { font-size: 0.8rem; color: var(--texto-suave); line-height: 1.5; }
+  .regla .para-quien { font-size: 0.75rem; color: #6b585e; line-height: 1.5;
+    margin-top: 8px; font-style: italic; }
+  .regla .marca { position: absolute; top: 12px; right: 13px;
+    font-size: 0.9rem; color: var(--burdeos-vivo); opacity: 0; transition: opacity .18s ease; }
+  .regla.elegida .marca { opacity: 1; }
+
+  /* ---------- El reparto ---------- */
+  .partes { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 12px; }
+  .parte {
+    background: var(--negro-carta); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 15px 16px; display: flex; flex-direction: column;
+  }
+  .parte.pasado { border-color: var(--burdeos-vivo);
+    background: linear-gradient(160deg, rgba(195,48,85,0.16), var(--negro-carta) 80%); }
+  .parte.logrado { border-color: var(--morado-claro);
+    background: linear-gradient(160deg, rgba(99,24,124,0.26), var(--negro-carta) 80%); }
+  .parte .cabeza { display: flex; justify-content: space-between;
+    align-items: baseline; gap: 8px; margin-bottom: 3px; }
+  .parte .nombre { font-family: 'Cinzel', Georgia, serif; font-size: 0.86rem;
+    letter-spacing: 0.06em; color: #fff; }
+  .parte .pct { font-size: 0.78rem; color: var(--burdeos-claro); font-weight: 600; }
+  .parte.logrado .pct { color: var(--morado-texto); }
+  .parte .cifras { font-size: 1.15rem; color: #fff; font-weight: 600; margin: 7px 0 2px; }
+  .parte .cifras small { font-size: 0.78rem; color: var(--texto-suave); font-weight: 400; }
+  .parte .explica { font-size: 0.72rem; color: #6b585e; line-height: 1.45; margin-top: 8px; }
+  .parte .restante { font-size: 0.75rem; margin-top: 4px; }
+  .parte .restante.mal { color: var(--burdeos-texto); }
+  .parte .restante.bien { color: var(--morado-texto); }
+
+  .barra-parte { height: 7px; border-radius: 4px; background: var(--negro-elevado);
+    overflow: hidden; margin-top: 9px; }
+  .barra-parte i { display: block; height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--burdeos), var(--burdeos-vivo));
+    transition: width 0.8s cubic-bezier(.22,1,.36,1); }
+  .parte.logrado .barra-parte i {
+    background: linear-gradient(90deg, var(--morado), var(--morado-vivo)); }
+  .parte.pasado .barra-parte i {
+    background: linear-gradient(90deg, var(--burdeos-vivo), #e8577c); }
+
+  .detalle-parte { margin-top: 9px; padding-top: 8px;
+    border-top: 1px dashed var(--borde); font-size: 0.73rem; color: var(--texto-suave); }
+  .detalle-parte div { display: flex; justify-content: space-between; padding: 2px 0; gap: 10px; }
+
+  /* ---------- Editar los porcentajes ---------- */
+  .repartidor { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px; margin-top: 4px; }
+  .repartidor .fila label { font-size: 0.76rem; }
+  .repartidor .fila .con-pct { display: flex; align-items: center; gap: 7px; }
+  .repartidor .fila input { text-align: right; }
+  .repartidor .fila .simbolo { color: var(--texto-suave); font-size: 0.9rem; }
+  .repartidor input[type=range] { width: 100%; accent-color: var(--burdeos-vivo);
+    margin-top: 7px; cursor: pointer; }
+  .suma { margin-top: 14px; font-size: 0.86rem; display: flex;
+    align-items: center; gap: 12px; flex-wrap: wrap; }
+  .suma .total { font-weight: 600; }
+  .suma .total.mal { color: var(--burdeos-texto); }
+  .suma .total.bien { color: var(--morado-texto); }
+
+  /* ---------- Apuntar gastos ---------- */
+  .apuntar { display: grid; grid-template-columns: 1.1fr 1.4fr 1.6fr 1fr auto;
+    gap: 10px; align-items: end; }
+  @media (max-width: 860px) { .apuntar { grid-template-columns: 1fr 1fr; } }
+  .apuntar .boton { margin-top: 0; padding: 10px 22px; }
+
+  .lista-gastos { margin-top: 16px; max-height: 340px; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--burdeos-oscuro) transparent; }
+  .lista-gastos::-webkit-scrollbar { width: 7px; }
+  .lista-gastos::-webkit-scrollbar-thumb { background: var(--burdeos-oscuro); border-radius: 4px; }
+  .gasto-fila {
+    display: grid; grid-template-columns: 62px 1fr auto auto; gap: 12px;
+    align-items: center; padding: 9px 4px; border-bottom: 1px solid rgba(44,34,37,0.6);
+    font-size: 0.84rem;
+  }
+  .gasto-fila:last-child { border-bottom: none; }
+  .gasto-fila .dia { color: var(--texto-suave); font-size: 0.76rem; }
+  .gasto-fila .que .concepto { color: var(--texto); }
+  .gasto-fila .que .cat { color: #6b585e; font-size: 0.72rem; }
+  .gasto-fila .importe { font-weight: 600; color: #fff; white-space: nowrap; }
+  .gasto-fila .quitar { background: none; border: none; color: #6b585e;
+    cursor: pointer; font-size: 1.05rem; line-height: 1; padding: 0 4px; }
+  .gasto-fila .quitar:hover { color: var(--burdeos-vivo); }
+
+  /* ---------- Deudas ---------- */
+  .deudas { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .deuda { background: var(--negro-carta); border: 1px solid var(--borde);
+    border-left: 3px solid var(--burdeos); border-radius: 10px; padding: 14px 16px;
+    position: relative; }
+  .deuda .nombre { font-size: 0.92rem; color: #fff; margin-bottom: 6px;
+    padding-right: 20px; }
+  .deuda .saldo { font-size: 1.3rem; font-weight: 600; color: #fff; }
+  .deuda .datos { font-size: 0.75rem; color: var(--texto-suave); margin-top: 6px; line-height: 1.5; }
+  .deuda .coste { font-size: 0.73rem; color: var(--burdeos-texto); margin-top: 5px; }
+  .deuda .quitar { position: absolute; top: 10px; right: 11px; background: none;
+    border: none; color: #6b585e; cursor: pointer; font-size: 1.05rem; line-height: 1; }
+  .deuda .quitar:hover { color: var(--burdeos-vivo); }
+
+  .metodos { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px; margin-top: 14px; }
+  .metodo { background: var(--negro-elevado); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 15px 16px; }
+  .metodo.gana { border-color: var(--morado-claro); }
+  .metodo .titulo { font-family: 'Cinzel', Georgia, serif; font-size: 0.86rem;
+    letter-spacing: 0.08em; color: #fff; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px; }
+  .metodo .titulo .etiqueta { font-family: 'Inter', sans-serif; font-size: 0.6rem;
+    letter-spacing: 0.1em; background: rgba(99,24,124,0.4); color: var(--morado-texto);
+    padding: 2px 7px; border-radius: 10px; text-transform: uppercase; }
+  .metodo .grande { font-size: 1.5rem; font-weight: 600; color: #fff; }
+  .metodo .grande small { font-size: 0.8rem; color: var(--texto-suave); font-weight: 400; }
+  .metodo .linea { font-size: 0.78rem; color: var(--texto-suave); margin-top: 6px; }
+  .metodo .orden { margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--borde);
+    font-size: 0.74rem; color: var(--texto-suave); line-height: 1.7; }
+
+  .extra-caja { display: flex; align-items: end; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 14px; }
+  .extra-caja > div { min-width: 170px; }
+
+  /* ---------- Avisos ---------- */
+  .aviso {
+    background: var(--negro-carta); border: 1px solid var(--borde);
+    border-left: 3px solid var(--burdeos); border-radius: 10px;
+    padding: 13px 16px; margin-bottom: 10px; font-size: 0.89rem; line-height: 1.6;
+  }
+  .aviso.rojo { border-left-color: var(--burdeos-vivo); background: rgba(125,24,50,0.14); }
+  .aviso.verde { border-left-color: var(--morado-vivo); background: rgba(99,24,124,0.16); }
+  .aviso .clase { display: block; font-size: 0.68rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--burdeos-claro); margin-bottom: 5px; }
+  .aviso.verde .clase { color: var(--morado-texto); }
+
+  /* ---------- Gráficas ---------- */
+  .graficas { display: grid; grid-template-columns: 1.55fr 1fr; gap: 14px; }
+  @media (max-width: 900px) { .graficas { grid-template-columns: 1fr; } }
+  .grafica-caja { position: relative; }
+  .leyenda { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+  .leyenda-item { display: flex; align-items: center; gap: 7px;
+    font-size: 0.8rem; color: var(--texto-suave); }
+  .leyenda-marca { width: 20px; height: 3px; border-radius: 2px; }
+  .leyenda-marca.discontinua { background: repeating-linear-gradient(
+    to right, #3987e5 0 6px, transparent 6px 11px); }
+
+  .globo {
+    position: absolute; top: 8px; transform: translateX(-50%);
+    background: var(--negro-elevado); border: 1px solid var(--burdeos);
+    border-radius: 8px; padding: 9px 12px; pointer-events: none;
+    opacity: 0; transition: opacity 0.12s ease; font-size: 0.8rem;
+    white-space: nowrap; z-index: 5;
+  }
+  .globo-fecha { color: var(--texto-suave); font-size: 0.72rem; margin-bottom: 5px; }
+  .globo-fila { display: flex; align-items: center; gap: 7px; padding: 2px 0; }
+  .globo-punto { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  .circulo-caja { display: flex; flex-direction: column; align-items: center; }
+  .circulo-leyenda { width: 100%; margin-top: 14px; }
+  .circulo-leyenda .fila { display: flex; align-items: center; gap: 9px;
+    font-size: 0.78rem; padding: 4px 0; }
+  .circulo-leyenda .punto { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .circulo-leyenda .nombre { flex: 1; color: var(--texto); }
+  .circulo-leyenda .valor { color: var(--texto-suave); white-space: nowrap; }
+
+  /* ---------- Cabecera del mes ---------- */
+  .mes-barra { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 14px; }
+  .mes-barra input[type=month] { width: auto; }
+  .resumen-mes { display: flex; gap: 18px; flex-wrap: wrap; margin-left: auto; }
+  .resumen-mes .dato { text-align: right; }
+  .resumen-mes .dato .v { font-size: 1.15rem; font-weight: 600; color: #fff; }
+  .resumen-mes .dato .e { font-size: 0.68rem; color: var(--texto-suave);
+    text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .vacio { text-align: center; color: #6b585e; padding: 36px 20px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<div class="halo" aria-hidden="true"></div>
+
+{% include '_palos.html' %}
+
+<div class="app">
+
+  <header>
+    <img src="/mascota" alt="" class="mascota" onerror="this.style.display='none'">
+    <div>
+      <h1>J0KER</h1>
+      <div class="subtitulo">Gastos &middot; tu dinero, repartido</div>
+    </div>
+    {% with sala='gastos' %}{% include '_salas.html' %}{% endwith %}
+  </header>
+
+  <div id="cargando" class="cargando">Cargando&hellip;</div>
+
+  <!-- ====== ALTA: cuánto entra y con qué regla ====== -->
+  <section id="formulario" class="oculto">
+    <h2 data-palo="&diams;">Empecemos por lo básico</h2>
+    <div class="tarjeta">
+      <div class="campos">
+        <div>
+          <label for="ingreso">¿Cuánto te entra al mes, limpio?</label>
+          <input type="number" id="ingreso" min="1" step="10" placeholder="1800">
+          <div class="pista">Lo que llega a tu cuenta, no lo que pone el contrato.</div>
+        </div>
+      </div>
+
+      <div style="margin-top:22px">
+        <label>¿Cómo quieres repartirlo?</label>
+        <div class="reglas" id="reglas"></div>
+      </div>
+
+      <div id="error-form"></div>
+      <button class="boton" id="guardar-perfil">Repartir mi dinero</button>
+    </div>
+  </section>
+
+  <!-- ====== PANEL ====== -->
+  <div id="panel" class="oculto">
+
+    <section>
+      <h2 data-palo="&diams;">El mes</h2>
+      <div class="mes-barra">
+        <div>
+          <label for="mes">Mes que estás mirando</label>
+          <input type="month" id="mes">
+        </div>
+        <div class="resumen-mes" id="resumen-mes"></div>
+      </div>
+      <div class="partes" id="partes"></div>
+    </section>
+
+    <section>
+      <h2 data-palo="&hearts;">Cómo va tu dinero</h2>
+      <div class="graficas">
+        <div class="tarjeta">
+          <div class="leyenda">
+            <div class="leyenda-item">
+              <span class="leyenda-marca" style="background:#c33055"></span>
+              Lo que te queda de verdad
+            </div>
+            <div class="leyenda-item">
+              <span class="leyenda-marca discontinua"></span>
+              El ritmo que deberías llevar
+            </div>
+          </div>
+          <div class="grafica-caja" id="grafica-linea"></div>
+        </div>
+        <div class="tarjeta circulo-caja">
+          <div id="grafica-circulo"></div>
+          <div class="circulo-leyenda" id="circulo-leyenda"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 data-palo="&spades;">Tus porcentajes</h2>
+      <div class="tarjeta">
+        <div id="explica-regla" style="font-size:0.86rem;color:var(--texto-suave);
+             line-height:1.65;margin-bottom:16px"></div>
+        <div class="repartidor" id="repartidor"></div>
+        <div class="suma" id="suma"></div>
+        <div id="error-reparto"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="boton" id="guardar-reparto">Guardar mi reparto</button>
+          <button class="boton secundario" id="restaurar-reparto">Volver al original</button>
+          <button class="boton secundario" id="cambiar-regla">Cambiar de regla</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 data-palo="&clubs;">Apuntar un gasto</h2>
+      <div class="tarjeta">
+        <div class="apuntar">
+          <div>
+            <label for="g-fecha">Día</label>
+            <input type="date" id="g-fecha">
+          </div>
+          <div>
+            <label for="g-categoria">Categoría</label>
+            <select id="g-categoria"></select>
+          </div>
+          <div>
+            <label for="g-concepto">¿Qué era? (opcional)</label>
+            <input type="text" id="g-concepto" maxlength="80" placeholder="Cena con Marta">
+          </div>
+          <div>
+            <label for="g-importe">Importe (€)</label>
+            <input type="number" id="g-importe" min="0.01" step="0.01" placeholder="24,50">
+          </div>
+          <button class="boton" id="apuntar-gasto">Apuntar</button>
+        </div>
+        <div id="error-gasto"></div>
+        <div class="lista-gastos" id="lista-gastos"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 data-palo="&spades;">Deudas</h2>
+      <div class="tarjeta">
+        <div class="apuntar" style="grid-template-columns:1.6fr 1fr 1fr 1fr auto">
+          <div>
+            <label for="d-nombre">¿Qué debes?</label>
+            <input type="text" id="d-nombre" maxlength="60" placeholder="Tarjeta de crédito">
+          </div>
+          <div>
+            <label for="d-saldo">Te queda (€)</label>
+            <input type="number" id="d-saldo" min="0.01" step="0.01" placeholder="1200">
+          </div>
+          <div>
+            <label for="d-interes">Interés anual (%)</label>
+            <input type="number" id="d-interes" min="0" max="200" step="0.01" placeholder="21,9">
+          </div>
+          <div>
+            <label for="d-minimo">Pago al mes (€)</label>
+            <input type="number" id="d-minimo" min="0" step="0.01" placeholder="45">
+          </div>
+          <button class="boton" id="anadir-deuda">Añadir</button>
+        </div>
+        <div id="error-deuda"></div>
+        <div class="deudas" id="deudas" style="margin-top:16px"></div>
+        <div id="plan-deudas"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 data-palo="&hearts;">Lo que deberías saber</h2>
+      <div id="avisos"></div>
+    </section>
+
+    <section>
+      <h2 data-palo="&diams;">En qué se te va</h2>
+      <div class="tarjeta" id="por-categoria"></div>
+    </section>
+
+    <div class="nota-legal">
+      <span id="aviso-legal"></span>
+      <div style="margin-top:12px">
+        <button class="boton secundario" id="borrar-todo" style="margin-top:0">
+          Borrar mis cuentas y empezar de cero
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% include '_joker_boton.html' %}
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  let opciones = null;
+  let panelActual = null;
+  let reglaElegida = '50_30_20';
+  let porcentajes = {};     // lo que hay en los campos ahora mismo
+  let extraDeuda = 0;
+
+  const euros = (n) => (n ?? 0).toLocaleString('es-ES',
+    {style: 'currency', currency: 'EUR', maximumFractionDigits: 2});
+
+  function pintarError(caja, texto) {
+    caja.innerHTML = '';
+    if (!texto) return;
+    const d = document.createElement('div');
+    d.className = 'error';
+    d.textContent = texto;
+    caja.appendChild(d);
+  }
+
+  // ====================================================================
+  // ALTA
+  // ====================================================================
+
+  function pintarReglas() {
+    const caja = $('reglas');
+    caja.innerHTML = '';
+    for (const [clave, r] of Object.entries(opciones.reglas)) {
+      const b = document.createElement('button');
+      b.className = 'regla' + (clave === reglaElegida ? ' elegida' : '');
+      b.type = 'button';
+
+      const marca = document.createElement('span');
+      marca.className = 'marca';
+      marca.textContent = '♦';
+
+      const n = document.createElement('div');
+      n.className = 'nombre';
+      n.textContent = r.nombre;
+      const a = document.createElement('div');
+      a.className = 'autor';
+      a.textContent = r.autor;
+      const res = document.createElement('div');
+      res.className = 'resumen';
+      res.textContent = r.resumen;
+      const pq = document.createElement('div');
+      pq.className = 'para-quien';
+      pq.textContent = r.para_quien;
+
+      b.append(marca, n, a, res, pq);
+      b.addEventListener('click', () => { reglaElegida = clave; pintarReglas(); });
+      caja.appendChild(b);
+    }
+  }
+
+  $('guardar-perfil').addEventListener('click', async () => {
+    pintarError($('error-form'), '');
+    const r = await fetch('/api/gastos/perfil', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ingreso: $('ingreso').value, regla: reglaElegida}),
+    });
+    const datos = await r.json();
+    if (datos.error) { pintarError($('error-form'), datos.error); return; }
+    $('formulario').classList.add('oculto');
+    pintarPanel(datos.panel);
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  });
+
+  $('cambiar-regla').addEventListener('click', () => {
+    $('panel').classList.add('oculto');
+    $('formulario').classList.remove('oculto');
+    $('ingreso').value = panelActual.perfil.ingreso;
+    reglaElegida = panelActual.perfil.regla;
+    pintarReglas();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  });
+
+  // ====================================================================
+  // EL REPARTO DEL MES
+  // ====================================================================
+
+  function pintarPartes(resumen) {
+    const caja = $('partes');
+    caja.innerHTML = '';
+    for (const p of resumen.partes) {
+      const div = document.createElement('div');
+      div.className = 'parte'
+        + (p.pasado ? ' pasado' : '')
+        + (p.tipo === 'ahorro' && !p.corto ? ' logrado' : '');
+
+      const cab = document.createElement('div');
+      cab.className = 'cabeza';
+      const n = document.createElement('span');
+      n.className = 'nombre';
+      n.textContent = p.nombre;
+      const pct = document.createElement('span');
+      pct.className = 'pct';
+      pct.textContent = p.pct.toFixed(p.pct % 1 ? 1 : 0) + '%';
+      cab.append(n, pct);
+
+      const cifras = document.createElement('div');
+      cifras.className = 'cifras';
+      cifras.textContent = euros(p.usado);
+      const de = document.createElement('small');
+      de.textContent = ' de ' + euros(p.presupuesto);
+      cifras.appendChild(de);
+
+      const barra = document.createElement('div');
+      barra.className = 'barra-parte';
+      const relleno = document.createElement('i');
+      relleno.style.width = '0%';
+      barra.appendChild(relleno);
+      // En el siguiente cuadro, para que la barra se vea crecer
+      requestAnimationFrame(() => {
+        relleno.style.width = Math.min(p.porcentaje_usado, 100) + '%';
+      });
+
+      const rest = document.createElement('div');
+      if (p.tipo === 'ahorro') {
+        rest.className = 'restante ' + (p.corto ? 'mal' : 'bien');
+        rest.textContent = p.corto
+          ? `Te faltan ${euros(p.presupuesto - p.usado)} para tu objetivo`
+          : `${euros(p.usado - p.presupuesto)} por encima de tu objetivo`;
+      } else {
+        rest.className = 'restante ' + (p.pasado ? 'mal' : '');
+        rest.style.color = p.pasado ? '' : 'var(--texto-suave)';
+        rest.textContent = p.pasado
+          ? `Te has pasado ${euros(p.usado - p.presupuesto)}`
+          : `Te quedan ${euros(p.restante)}`;
+      }
+
+      div.append(cab, cifras, barra, rest);
+
+      if (p.detalle.length) {
+        const det = document.createElement('div');
+        det.className = 'detalle-parte';
+        for (const d of p.detalle) {
+          const f = document.createElement('div');
+          const a = document.createElement('span');
+          a.textContent = d.nombre;
+          const b = document.createElement('span');
+          b.textContent = euros(d.importe);
+          f.append(a, b);
+          det.appendChild(f);
+        }
+        div.appendChild(det);
+      }
+
+      const ex = document.createElement('div');
+      ex.className = 'explica';
+      ex.textContent = p.explica;
+      div.appendChild(ex);
+
+      caja.appendChild(div);
+    }
+  }
+
+  function pintarResumenMes(resumen) {
+    const caja = $('resumen-mes');
+    caja.innerHTML = '';
+    const datos = [
+      [euros(resumen.ingreso), 'Entra'],
+      [euros(resumen.total_gastado), 'Gastado'],
+      [euros(resumen.sobrante), 'Te queda'],
+    ];
+    if (resumen.dias_quedan > 0 && resumen.dias_pasados > 0) {
+      datos.push([euros(resumen.proyeccion_mes), 'Acabarás en']);
+    }
+    for (const [v, e] of datos) {
+      const d = document.createElement('div');
+      d.className = 'dato';
+      const a = document.createElement('div');
+      a.className = 'v';
+      a.textContent = v;
+      const b = document.createElement('div');
+      b.className = 'e';
+      b.textContent = e;
+      d.append(a, b);
+      caja.appendChild(d);
+    }
+  }
+
+  // ====================================================================
+  // EDITAR LOS PORCENTAJES
+  // ====================================================================
+
+  function pintarRepartidor(panel) {
+    const caja = $('repartidor');
+    caja.innerHTML = '';
+    porcentajes = {};
+
+    for (const p of panel.resumen.partes) {
+      porcentajes[p.clave] = p.pct;
+
+      const fila = document.createElement('div');
+      fila.className = 'fila';
+
+      const et = document.createElement('label');
+      et.textContent = p.nombre;
+      et.setAttribute('for', 'pct-' + p.clave);
+
+      const con = document.createElement('div');
+      con.className = 'con-pct';
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.id = 'pct-' + p.clave;
+      input.min = 0; input.max = 100; input.step = 0.5;
+      input.value = p.pct;
+      const sim = document.createElement('span');
+      sim.className = 'simbolo';
+      sim.textContent = '%';
+      con.append(input, sim);
+
+      const rango = document.createElement('input');
+      rango.type = 'range';
+      rango.min = 0; rango.max = 100; rango.step = 0.5;
+      rango.value = p.pct;
+      rango.setAttribute('aria-label', p.nombre);
+
+      const sincronizar = (valor) => {
+        porcentajes[p.clave] = parseFloat(valor) || 0;
+        input.value = valor;
+        rango.value = valor;
+        actualizarSuma();
+      };
+      input.addEventListener('input', () => sincronizar(input.value));
+      rango.addEventListener('input', () => sincronizar(rango.value));
+
+      fila.append(et, con, rango);
+      caja.appendChild(fila);
+    }
+    actualizarSuma();
+  }
+
+  function actualizarSuma() {
+    const total = Object.values(porcentajes).reduce((a, b) => a + (parseFloat(b) || 0), 0);
+    const redondo = Math.round(total * 100) / 100;
+    const caja = $('suma');
+    caja.innerHTML = '';
+
+    const t = document.createElement('span');
+    t.className = 'total ' + (Math.abs(redondo - 100) < 0.01 ? 'bien' : 'mal');
+    t.textContent = `Suman ${redondo.toLocaleString('es-ES')}%`;
+
+    const nota = document.createElement('span');
+    nota.style.color = 'var(--texto-suave)';
+    nota.style.fontSize = '0.8rem';
+    if (Math.abs(redondo - 100) < 0.01) {
+      const ingreso = panelActual ? panelActual.resumen.ingreso : 0;
+      const ahorroClave = (panelActual.resumen.partes.find(p => p.tipo === 'ahorro') || {}).clave;
+      const pctAhorro = ahorroClave ? (porcentajes[ahorroClave] || 0) : 0;
+      nota.textContent = pctAhorro
+        ? `Con tu sueldo, eso son ${euros(ingreso * pctAhorro / 100)} al mes de ahorro `
+          + `(${euros(ingreso * pctAhorro / 100 * 12)} al año).`
+        : 'Reparto válido.';
+    } else {
+      nota.textContent = redondo > 100
+        ? `Te sobra ${(redondo - 100).toLocaleString('es-ES')}%: estarías repartiendo dinero que no tienes.`
+        : `Te falta ${(100 - redondo).toLocaleString('es-ES')}% por asignar.`;
+    }
+
+    caja.append(t, nota);
+    $('guardar-reparto').disabled = Math.abs(redondo - 100) >= 0.01;
+  }
+
+  $('guardar-reparto').addEventListener('click', async () => {
+    pintarError($('error-reparto'), '');
+    const r = await fetch('/api/gastos/reparto', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({porcentajes}),
+    });
+    const datos = await r.json();
+    if (datos.error) { pintarError($('error-reparto'), datos.error); return; }
+    pintarPanel(datos.panel);
+  });
+
+  $('restaurar-reparto').addEventListener('click', async () => {
+    const r = await fetch('/api/gastos/reparto', {method: 'DELETE'});
+    const datos = await r.json();
+    if (datos.panel) pintarPanel(datos.panel);
+  });
+
+  // ====================================================================
+  // GASTOS
+  // ====================================================================
+
+  $('apuntar-gasto').addEventListener('click', async () => {
+    pintarError($('error-gasto'), '');
+    const r = await fetch('/api/gastos/gasto', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        fecha: $('g-fecha').value, categoria: $('g-categoria').value,
+        concepto: $('g-concepto').value, importe: $('g-importe').value,
+      }),
+    });
+    const datos = await r.json();
+    if (datos.error) { pintarError($('error-gasto'), datos.error); return; }
+    $('g-concepto').value = '';
+    $('g-importe').value = '';
+    $('g-importe').focus();
+    $('mes').value = datos.panel.resumen.mes;
+    pintarPanel(datos.panel);
+  });
+
+  function pintarGastos(gastos) {
+    const caja = $('lista-gastos');
+    caja.innerHTML = '';
+    if (!gastos.length) {
+      const v = document.createElement('div');
+      v.className = 'vacio';
+      v.textContent = 'Todavía no has apuntado nada este mes. Empieza por lo de hoy: '
+                    + 'con tres o cuatro días ya salen avisos con tus cifras.';
+      caja.appendChild(v);
+      return;
+    }
+    for (const g of gastos) {
+      const fila = document.createElement('div');
+      fila.className = 'gasto-fila';
+
+      const dia = document.createElement('div');
+      dia.className = 'dia';
+      dia.textContent = new Date(g.fecha + 'T12:00:00')
+        .toLocaleDateString('es-ES', {day: 'numeric', month: 'short'});
+
+      const que = document.createElement('div');
+      que.className = 'que';
+      const c = document.createElement('div');
+      c.className = 'concepto';
+      c.textContent = g.concepto || opciones.categorias[g.categoria];
+      const cat = document.createElement('div');
+      cat.className = 'cat';
+      cat.textContent = opciones.categorias[g.categoria];
+      que.append(c, cat);
+
+      const imp = document.createElement('div');
+      imp.className = 'importe';
+      imp.textContent = euros(g.importe);
+
+      const quitar = document.createElement('button');
+      quitar.className = 'quitar';
+      quitar.textContent = '×';
+      quitar.title = 'Borrar este gasto';
+      quitar.addEventListener('click', async () => {
+        quitar.disabled = true;
+        const r = await fetch(`/api/gastos/gasto/${g.id}?mes=${$('mes').value}`,
+                              {method: 'DELETE'});
+        const datos = await r.json();
+        if (datos.panel) pintarPanel(datos.panel);
+      });
+
+      fila.append(dia, que, imp, quitar);
+      caja.appendChild(fila);
+    }
+  }
+
+  // ====================================================================
+  // DEUDAS
+  // ====================================================================
+
+  $('anadir-deuda').addEventListener('click', async () => {
+    pintarError($('error-deuda'), '');
+    const r = await fetch('/api/gastos/deuda', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        nombre: $('d-nombre').value, saldo: $('d-saldo').value,
+        interes: $('d-interes').value || 0, pago_minimo: $('d-minimo').value || 0,
+      }),
+    });
+    const datos = await r.json();
+    if (datos.error) { pintarError($('error-deuda'), datos.error); return; }
+    for (const campo of ['d-nombre', 'd-saldo', 'd-interes', 'd-minimo']) $(campo).value = '';
+    pintarPanel(datos.panel);
+  });
+
+  function pintarDeudas(deudas) {
+    const caja = $('deudas');
+    caja.innerHTML = '';
+    for (const d of deudas) {
+      const div = document.createElement('div');
+      div.className = 'deuda';
+
+      const n = document.createElement('div');
+      n.className = 'nombre';
+      n.textContent = d.nombre;
+      const s = document.createElement('div');
+      s.className = 'saldo';
+      s.textContent = euros(d.saldo);
+      const datos = document.createElement('div');
+      datos.className = 'datos';
+      datos.textContent = `${d.interes.toLocaleString('es-ES')}% anual · pagas `
+                        + `${euros(d.pago_minimo)} al mes`;
+
+      const coste = document.createElement('div');
+      coste.className = 'coste';
+      const mensual = d.saldo * (d.interes / 100) / 12;
+      coste.textContent = mensual > 0
+        ? `Solo de intereses: ${euros(mensual)} al mes`
+        : 'Sin intereses: esta no corre prisa';
+
+      const quitar = document.createElement('button');
+      quitar.className = 'quitar';
+      quitar.textContent = '×';
+      quitar.title = 'Quitar esta deuda';
+      quitar.addEventListener('click', async () => {
+        quitar.disabled = true;
+        const r = await fetch('/api/gastos/deuda/' + d.id, {method: 'DELETE'});
+        const resp = await r.json();
+        if (resp.panel) pintarPanel(resp.panel);
+      });
+
+      div.append(quitar, n, s, datos, coste);
+      caja.appendChild(div);
+    }
+  }
+
+  function pintarPlanDeudas(plan) {
+    const caja = $('plan-deudas');
+    caja.innerHTML = '';
+    if (!plan.hay_deudas) {
+      const v = document.createElement('div');
+      v.className = 'vacio';
+      v.textContent = 'No tienes deudas apuntadas. Si tienes alguna, añádela arriba: '
+                    + 'te digo cuánto te cuesta tenerla y en qué orden quitártelas.';
+      caja.appendChild(v);
+      return;
+    }
+
+    // Cuánto extra puedes poner cada mes: es LA variable que cambia todo
+    const extraCaja = document.createElement('div');
+    extraCaja.className = 'extra-caja';
+    extraCaja.style.marginTop = '20px';
+    const cont = document.createElement('div');
+    const et = document.createElement('label');
+    et.textContent = '¿Cuánto extra puedes poner al mes?';
+    et.setAttribute('for', 'extra');
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.id = 'extra'; inp.min = 0; inp.step = 10;
+    inp.value = extraDeuda;
+    const pista = document.createElement('div');
+    pista.className = 'pista';
+    pista.textContent = `Por encima de los ${euros(plan.minimos)} de pagos mínimos.`;
+    cont.append(et, inp, pista);
+
+    const boton = document.createElement('button');
+    boton.className = 'boton';
+    boton.style.marginTop = '0';
+    boton.textContent = 'Recalcular';
+    boton.addEventListener('click', () => {
+      extraDeuda = Math.max(0, parseFloat(inp.value) || 0);
+      recargar();
+    });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') boton.click(); });
+    extraCaja.append(cont, boton);
+    caja.appendChild(extraCaja);
+
+    if (plan.ahogado || plan.avalancha.imposible) {
+      const av = document.createElement('div');
+      av.className = 'aviso rojo';
+      const c = document.createElement('span');
+      c.className = 'clase';
+      c.textContent = 'Esto no sale';
+      const t = document.createElement('div');
+      t.textContent = plan.recomendacion;
+      av.append(c, t);
+      caja.appendChild(av);
+      return;
+    }
+
+    const metodos = document.createElement('div');
+    metodos.className = 'metodos';
+    const gana = plan.diferencia_intereses > 0.5 ? 'avalancha' : null;
+
+    for (const [clave, titulo, explica] of [
+      ['avalancha', 'Avalancha', 'Primero la de más interés. Es la que menos dinero cuesta.'],
+      ['bola_de_nieve', 'Bola de nieve', 'Primero la más pequeña. Tachas una antes y eso engancha.'],
+    ]) {
+      const p = plan[clave];
+      const div = document.createElement('div');
+      div.className = 'metodo' + (clave === gana ? ' gana' : '');
+
+      const tit = document.createElement('div');
+      tit.className = 'titulo';
+      tit.append(document.createTextNode(titulo));
+      if (clave === gana) {
+        const et2 = document.createElement('span');
+        et2.className = 'etiqueta';
+        et2.textContent = 'más barata';
+        tit.appendChild(et2);
+      }
+
+      const grande = document.createElement('div');
+      grande.className = 'grande';
+      grande.textContent = p.meses;
+      const u = document.createElement('small');
+      u.textContent = p.meses === 1 ? ' mes' : ' meses';
+      grande.appendChild(u);
+
+      const l1 = document.createElement('div');
+      l1.className = 'linea';
+      l1.textContent = `${euros(p.intereses)} de intereses en total`;
+      const l2 = document.createElement('div');
+      l2.className = 'linea';
+      l2.textContent = explica;
+
+      div.append(tit, grande, l1, l2);
+
+      if (p.pasos.length) {
+        const orden = document.createElement('div');
+        orden.className = 'orden';
+        p.pasos.forEach((paso, i) => {
+          const f = document.createElement('div');
+          f.textContent = `${i + 1}. ${paso.nombre} — fuera en el mes ${paso.mes}`;
+          orden.appendChild(f);
+        });
+        div.appendChild(orden);
+      }
+      metodos.appendChild(div);
+    }
+    caja.appendChild(metodos);
+
+    const reco = document.createElement('div');
+    reco.className = 'aviso';
+    reco.style.marginTop = '14px';
+    const c2 = document.createElement('span');
+    c2.className = 'clase';
+    c2.textContent = 'Cuál te conviene';
+    const t2 = document.createElement('div');
+    t2.textContent = plan.recomendacion;
+    reco.append(c2, t2);
+    caja.appendChild(reco);
+  }
+
+  // ====================================================================
+  // AVISOS Y CATEGORÍAS
+  // ====================================================================
+
+  function pintarAvisos(avisos) {
+    const caja = $('avisos');
+    caja.innerHTML = '';
+    for (const a of avisos) {
+      const div = document.createElement('div');
+      div.className = 'aviso ' + (a.tipo === 'aviso' ? 'rojo' : (a.tipo === 'bien' ? 'verde' : ''));
+      const c = document.createElement('span');
+      c.className = 'clase';
+      c.textContent = a.clase;
+      const t = document.createElement('div');
+      t.textContent = a.texto;
+      div.append(c, t);
+      caja.appendChild(div);
+    }
+  }
+
+  function pintarPorCategoria(resumen) {
+    const caja = $('por-categoria');
+    caja.innerHTML = '';
+    if (!resumen.por_categoria.length) {
+      const v = document.createElement('div');
+      v.className = 'vacio';
+      v.textContent = 'Sin gastos apuntados este mes.';
+      caja.appendChild(v);
+      return;
+    }
+    const mayor = resumen.por_categoria[0].importe;
+    for (const c of resumen.por_categoria) {
+      const fila = document.createElement('div');
+      fila.style.cssText = 'margin-bottom:11px';
+
+      const cab = document.createElement('div');
+      cab.style.cssText = 'display:flex;justify-content:space-between;gap:10px;'
+                        + 'font-size:0.84rem;margin-bottom:4px';
+      const n = document.createElement('span');
+      n.textContent = c.nombre;
+      const v = document.createElement('span');
+      v.style.cssText = 'color:#fff;font-weight:600;white-space:nowrap';
+      const pctIngreso = resumen.ingreso ? (c.importe / resumen.ingreso * 100) : 0;
+      v.textContent = `${euros(c.importe)}  ·  ${pctIngreso.toFixed(1)}% de tu sueldo`;
+      cab.append(n, v);
+
+      const barra = document.createElement('div');
+      barra.className = 'barra-parte';
+      barra.style.marginTop = '0';
+      const relleno = document.createElement('i');
+      relleno.style.width = '0%';
+      barra.appendChild(relleno);
+      requestAnimationFrame(() => {
+        relleno.style.width = (c.importe / mayor * 100) + '%';
+      });
+
+      fila.append(cab, barra);
+      caja.appendChild(fila);
+    }
+  }
+</script>
+<script src="/static/gastos-graficas.js"></script>
+<script>
+  // ====================================================================
+  // ARRANQUE
+  // ====================================================================
+
+  function pintarPanel(panel) {
+    panelActual = panel;
+
+    pintarResumenMes(panel.resumen);
+    pintarPartes(panel.resumen);
+    pintarRepartidor(panel);
+    pintarGastos(panel.gastos);
+    pintarDeudas(panel.deudas);
+    pintarPlanDeudas(panel.plan_deudas);
+    pintarAvisos(panel.avisos);
+    pintarPorCategoria(panel.resumen);
+    dibujarLinea(panel.graficas);
+    dibujarCirculo(panel.graficas);
+
+    $('explica-regla').textContent =
+      `${panel.regla.nombre} — ${panel.regla.resumen} Puedes mover los porcentajes a tu `
+      + `gusto: lo único que pido es que sumen 100, porque no se puede repartir más dinero `
+      + `del que entra.`;
+    $('aviso-legal').textContent = panel.aviso_legal;
+    $('panel').classList.remove('oculto');
+  }
+
+  async function recargar() {
+    const mes = $('mes').value;
+    const r = await fetch(`/api/gastos/panel?mes=${mes}&extra=${extraDeuda}`);
+    const datos = await r.json();
+    if (datos.hay_perfil) pintarPanel(datos.panel);
+  }
+
+  $('mes').addEventListener('change', recargar);
+
+  $('borrar-todo').addEventListener('click', async () => {
+    if (!window.confirm('Se borran tus ingresos, todos tus gastos y todas tus deudas. '
+                      + 'Esto no se puede deshacer. ¿Seguro?')) return;
+    await fetch('/api/gastos/borrar', {method: 'POST'});
+    window.location.reload();
+  });
+
+  async function arrancar() {
+    opciones = await (await fetch('/api/gastos/opciones')).json();
+
+    const sel = $('g-categoria');
+    for (const [clave, nombre] of Object.entries(opciones.categorias)) {
+      const op = document.createElement('option');
+      op.value = clave;
+      op.textContent = nombre;
+      sel.appendChild(op);
+    }
+    $('g-fecha').value = new Date().toISOString().slice(0, 10);
+    $('mes').value = opciones.mes_actual;
+
+    const datos = await (await fetch('/api/gastos/panel')).json();
+    $('cargando').classList.add('oculto');
+
+    if (datos.hay_perfil) {
+      reglaElegida = datos.panel.perfil.regla;
+      $('mes').value = datos.panel.resumen.mes;
+      pintarReglas();
+      pintarPanel(datos.panel);
+    } else {
+      pintarReglas();
+      $('formulario').classList.remove('oculto');
+    }
+  }
+
+  arrancar();
+</script>
+</body>
+</html>
