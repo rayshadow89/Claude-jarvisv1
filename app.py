@@ -148,6 +148,18 @@ def gym_opciones():
         "actividades": {k: v[1] for k, v in gym.FACTORES_ACTIVIDAD.items()},
         "somatotipos": {k: v[1] for k, v in gym.AJUSTE_SOMATOTIPO.items()},
         "limitaciones": gym.LIMITACIONES,
+        "grupos": gym.GRUPOS,
+        # Lo que necesita la página para adelantar el título de un día mientras
+        # lo editas. El título bueno lo pone el servidor al guardar; esto es
+        # solo para que lo veas cambiar sobre la marcha.
+        "grupos_corto": gym.GRUPOS_CORTO,
+        # El orden importa: es el desempate cuando dos grupos tienen los mismos
+        # ejercicios. Va como lista porque el JSON ordena las claves alfabética-
+        # mente y entonces la página titularía distinto que el servidor.
+        "grupos_orden": list(gym.GRUPOS),
+        "grupos_superior": sorted(gym.GRUPOS_SUPERIOR),
+        "grupos_inferior": sorted(gym.GRUPOS_INFERIOR),
+        "dias_semana_nombres": gym.DIAS_SEMANA,
     })
 
 
@@ -213,6 +225,7 @@ def gym_guardar_perfil():
 def gym_borrar():
     gym.borrar_perfil()
     gym.borrar_rutina_personalizada()
+    gym.borrar_completados()
     return jsonify({"ok": True})
 
 
@@ -264,17 +277,33 @@ def gym_guardar_rutina():
     for dia in rutina:
         if not isinstance(dia, dict):
             return jsonify({"error": "Formato de rutina incorrecto."}), 400
-        ejercicios = [
-            {"nombre": str(e.get("nombre", ""))[:120], "grupo": str(e.get("grupo", ""))[:30],
-             "alternativa": (str(e["alternativa"])[:120] if e.get("alternativa") else None),
-             "sustituye_a": (str(e["sustituye_a"])[:120] if e.get("sustituye_a") else None)}
-            for e in (dia.get("ejercicios") or []) if isinstance(e, dict)
-            and str(e.get("nombre", "")).strip()
-        ]
+        ejercicios = []
+        for e in (dia.get("ejercicios") or []):
+            if not isinstance(e, dict) or not str(e.get("nombre", "")).strip():
+                continue
+            # El grupo tiene que ser uno de los nuestros. Si el usuario añade un
+            # ejercicio suyo y elige mal (o no elige), miramos si el nombre está
+            # en el catálogo; y si tampoco, lo dejamos sin grupo antes que
+            # guardar una categoría inventada que luego descuadre el título.
+            grupo = str(e.get("grupo", ""))
+            if grupo not in gym.GRUPOS:
+                ficha = next((c for c in gym.EJERCICIOS
+                              if c["nombre"] == str(e.get("nombre", "")).strip()), None)
+                grupo = ficha["grupo"] if ficha else ""
+            ejercicios.append({
+                "nombre": str(e.get("nombre", "")).strip()[:120],
+                "grupo": grupo,
+                "alternativa": (str(e["alternativa"])[:120] if e.get("alternativa") else None),
+                "sustituye_a": (str(e["sustituye_a"])[:120] if e.get("sustituye_a") else None),
+            })
+
+        # El nombre del día NO viene del navegador: lo recalculamos aquí a
+        # partir de los ejercicios que han quedado. Así un lunes que ya no
+        # tiene ni un ejercicio de pecho deja de llamarse "día de pecho".
         limpia.append({
             "dia": str(dia.get("dia", ""))[:20],
             "descanso": bool(dia.get("descanso")) or not ejercicios,
-            "titulo": str(dia.get("titulo", "Descanso"))[:80],
+            "titulo": gym.titulo_de_sesion(ejercicios),
             "series": dia.get("series"),
             "reps": dia.get("reps"),
             "tiempo_descanso": dia.get("tiempo_descanso"),
@@ -302,12 +331,51 @@ def gym_catalogo():
         {
             "nombre": e["nombre"],
             "grupo": e["grupo"],
+            "grupo_nombre": gym.GRUPOS[e["grupo"]],
             "casa": e["casa"],
             "alternativa": e["alt"],
             "desaconsejado": [gym.LIMITACIONES[l] for l in limitaciones if l in e["evitar"]],
         }
         for e in gym.EJERCICIOS
     ])
+
+
+# --- Días completados ---
+
+@app.post("/api/gym/completado")
+def gym_marcar_completado():
+    """Marca (o desmarca) un día de esta semana como hecho."""
+    datos = request.get_json(silent=True) or {}
+    dia = str(datos.get("dia", ""))
+    if dia not in gym.DIAS_SEMANA:
+        return jsonify({"error": "Ese día no existe."}), 400
+
+    hechos = gym.marcar_dia(dia, bool(datos.get("hecho")))
+    return jsonify({"ok": True, "dias_hechos": hechos, "semana_iso": gym.semana_actual()})
+
+
+# --- Otro menú (la rotación de comidas) ---
+
+@app.get("/api/gym/menu")
+def gym_otro_menu():
+    """
+    Otro menú del día, del mismo grupo de menús que cuadran con tus números.
+
+    Las comidas rotan solas cada día; esto es para cuando hoy no te apetece
+    lo que ha tocado y quieres ver el siguiente sin esperar a mañana.
+    """
+    perfil = gym.leer_perfil()
+    if not perfil:
+        return jsonify({"error": "Aún no hay perfil."}), 400
+
+    try:
+        rotacion = int(request.args.get("v", 0))
+    except ValueError:
+        rotacion = 0
+
+    metricas = gym.calcular_metricas(perfil)
+    nutricion = gym.calcular_nutricion(perfil, metricas)
+    return jsonify(gym.sugerir_menu(nutricion["calorias"], nutricion["proteina_g"], rotacion))
 
 
 # --- Limitaciones escritas a mano ---

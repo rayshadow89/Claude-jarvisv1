@@ -119,13 +119,49 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
     en vez de consejos genéricos, y los números movidos a un apartado
     aparte de "Datos adicionales".
 
+13. J0KER GYM, tercera vuelta. Ocho arreglos pedidos tras usarlo:
+
+    - La trayectoria prevista ya no parece de adorno. Si no aparece es
+      porque falta el peso objetivo, y ahora la página lo DICE en vez de
+      callarse. Y cuando aparece, se puede acercar la vista ("Mis
+      registros" / "3 meses" / "Todo el plan"): antes cuatro días de
+      datos ocupaban el 2% del ancho frente a seis meses de proyección,
+      así que no se veía nada.
+    - El catálogo pasó de 41 a 115 ejercicios, y los grupos musculares
+      de 6 a 12: antes "brazo" y "pierna" lo mezclaban todo; ahora hay
+      bíceps, tríceps, antebrazo, cuádriceps, femoral, glúteo y gemelo
+      por separado.
+    - Se puede añadir un ejercicio que no esté en la lista, escribiendo
+      su nombre y eligiendo de qué grupo es.
+    - El título de cada día se calcula con los ejercicios que tiene de
+      verdad. Antes ponía "Lunes: día de pecho" aunque le cambiaras todo
+      por sentadillas.
+    - Casilla de "día completado": al marcarla, el día se pone morado
+      (el mismo burdeos de la casa girado de tono). Se guarda por semana,
+      así que cada lunes empieza limpia sola.
+    - Las comidas rotan: hay doce menús que cuadran con tus números y
+      cada día toca uno. Como no son siete, el menú de un lunes no es el
+      del lunes siguiente. Y hay un botón para pasar al siguiente.
+    - Los palos de la baraja salen en TODAS las páginas, no solo en la
+      del chat (templates/_palos.html).
+    - Los siete días de la semana caben de lado a lado de la pantalla.
+
+    Y de paso, dos cosas que se vieron por el camino: la alternativa que
+    se enseña ("cambia por X") ahora se comprueba contra tus lesiones
+    (a quien le dolía la rodilla le proponía cambiar la prensa por una
+    sentadilla goblet, que es justo lo que no debe hacer), y los avisos
+    de "en lugar de..." se limitan a dos por sesión, que con una rodilla
+    tocada salían en casi todas las líneas y tapaban lo importante.
+
 
 FICHEROS DEL PROYECTO
 ----------------------
 
   app.py            El servidor de la página web. Es lo que ejecutas para
                     usar JOKER desde el navegador.
-  templates/        El diseño de la página web (index.html).
+  templates/        El diseño de las páginas: index.html (el chat),
+                    gym.html (J0KER GYM) y _palos.html (los carruseles
+                    de palos de la baraja, compartidos por las dos).
   static/           Imágenes. Aquí está joker.jpg (la mascota).
 
   joker.py          El asistente en versión terminal. Contiene el "motor"
@@ -216,21 +252,52 @@ Metes tus datos una vez y te calcula:
     (los colores están comprobados para que se distingan también con
     daltonismo, y además una línea es continua y la otra no).
 
+    LA TRAYECTORIA PREVISTA sale de tu peso objetivo. Si no has puesto
+    ninguno, no hay línea que dibujar, y la gráfica te lo dice ahí mismo
+    en vez de dejarte pensando si está rota.
+
+    Y como el plan dura meses pero tú llevas unos días apuntando, hay
+    tres botones para elegir qué ves:
+      Mis registros -> tu tramo, ampliado. Es donde se compara de verdad
+                       si vas por encima o por debajo de lo previsto.
+      3 meses       -> el trimestre.
+      Todo el plan  -> de hoy hasta la meta, con la línea del peso
+                       objetivo marcada.
+
   LA SEMANA
-    Los 7 días con sus ejercicios, series, repeticiones y descansos.
+    Los 7 días, uno al lado del otro, con sus ejercicios, series,
+    repeticiones y descansos. El nombre de cada día (por ejemplo "Pecho,
+    hombro y tríceps") NO está escrito a mano: se calcula mirando qué
+    músculos tocan los ejercicios que hay ese día, así que si cambias el
+    contenido, el título cambia contigo.
+
     PUEDES EDITARLA: el botón "Editar mi rutina" te deja cambiar cada
     ejercicio por otro, quitar los que no quieras, añadir más, o
     convertir un día de descanso en día de entreno. Al editar, el
     desplegable te avisa con ⚠ si un ejercicio choca con tus lesiones.
+    Hay 115 ejercicios repartidos en 12 grupos musculares, y si aun así
+    falta el tuyo, "+ Escribir un ejercicio mío" te deja ponerlo con su
+    nombre y su grupo (hace falta el grupo: sin él, el título del día no
+    sabría contarlo).
     Si prefieres no complicarte, "Que la haga JOKER" vuelve a la
     calculada automáticamente.
 
+    DÍA COMPLETADO: cada día de entreno lleva una casilla. Al marcarla el
+    día se pone morado. Se guarda por semana, así que el lunes empieza
+    limpia sola sin que tengas que borrar nada. JOKER también lo sabe: si
+    le preguntas por el chat, te dice qué días llevas y cuáles te quedan.
+
   OJO CON ESTOS EJERCICIOS
     La lista concreta de lo que debes evitar según tus lesiones, con por
-    cuál cambiar cada uno.
+    cuál cambiar cada uno. El recambio que te propone está comprobado
+    contra TUS lesiones, no es la alternativa genérica del catálogo.
 
   MENÚ DE HOY
     Desayuno, comida, cena y snacks que cuadran con tus calorías.
+    NO SE QUEDAN AHÍ PARADAS: hay doce menús distintos que cuadran con
+    tus números, y cada día toca uno. Como no son siete, el menú de un
+    lunes no es el del lunes siguiente. Si hoy no te apetece lo que ha
+    salido, "Enséñame otro menú" pasa al siguiente.
 
   RECOMENDACIONES
     Centradas en TU perfil: citan tus calorías, tus gramos de proteína,
@@ -254,8 +321,9 @@ Pulsas "Que lo interprete JOKER" y te marca las casillas que
 correspondan, diciéndote cuáles ha marcado para que lo revises.
 
 A partir de ahí, la rutina esquiva sola los ejercicios que no te
-convienen. Está comprobado con 192 combinaciones distintas de lesiones:
-en ninguna se cuela un ejercicio contraindicado.
+convienen. Está comprobado con 2240 combinaciones distintas de
+limitaciones, días y objetivos: en ninguna se cuela un ejercicio
+contraindicado, ni como ejercicio ni como alternativa propuesta.
 
 
 JOKER TAMBIÉN LO CONOCE
