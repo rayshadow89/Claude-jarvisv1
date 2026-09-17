@@ -14,38 +14,49 @@
      =====================================================================
 
      Aquí todavía no hay ni una cotización de verdad, y es a propósito: esto
-     es el sitio preparado para cuando las haya. Lo que sí está terminado es
-     cómo se entra:
+     es el sitio preparado para cuando las haya.
 
-       1. La página abre en burdeos, como el resto de JOKER.
-       2. Al pulsar "Abrir la mesa" (o sola, al medio segundo), todo vira a
-          azul. No es otra hoja de estilos: es la MISMA, con --acento-*
-          apuntando a otro color. Como todo lleva transición, el cambio se
-          anima en vez de saltar.
-       3. El halo de luz se va de arriba y reaparece abajo.
-       4. Los palos se paran, tiemblan un momento y se tumban: la columna de
-          la izquierda sube a ser una franja arriba, la de la derecha baja a
-          ser otra abajo.
-       5. Entre las dos queda el marco. Ahí es donde irán las inversiones.
+     CÓMO QUEDA LA PÁGINA, de arriba abajo:
 
-     Mientras tanto, dentro del marco corren minigráficas en sentido contrario
-     al de los palos de su lado, para que el sitio no parezca roto sino
-     esperando.
+         el logo y los botones
+         ────────────────────────────  la franja de gráficas, dando vueltas
+         ────────────────────────────  dos franjas de palos, de decoración
+                  (el centro, libre)
+
+     CÓMO SE ENTRA, que es lo que sí está terminado:
+
+       1. Abre en burdeos, como el resto de JOKER, con los palos en los
+          laterales igual que en las demás páginas.
+       2. Las dos columnas de palos SE VAN, cada una por el borde que tiene
+          más cerca, hasta salirse de la pantalla.
+       3. Mientras, todo vira a azul. No es otra hoja de estilos: es la
+          misma, con --acento-* apuntando a otro color.
+       4. El halo de luz de arriba se apaga y, a la vez, aparece poco a poco
+          el de abajo. El mismo degradado, del revés.
+       5. Entran las dos franjas de palos, rápidas y en sentidos contrarios,
+          como dos trenes que se cruzan.
+       6. Y por último asoman las gráficas, apareciendo poco a poco.
+
+     Todo el movimiento va con transform y opacity, que es lo único que el
+     navegador puede mover sin rehacer la página. La versión anterior
+     animaba anchos y alturas y se notaban los tirones.
      ===================================================================== */
 
   body {
     min-height: 100vh;
-    padding-bottom: 120px;
     overflow-x: hidden;
+    padding-bottom: 60px;
   }
 
-  /* La mascota es un JPG con fondo, así que se tiñe entera con el mismo
-     truco que en el gym: al virar la sala al azul, ella vira también. */
+  /* La cabecera aquí no lleva raya abajo: con las franjas justo debajo, esa
+     línea se veía cruzando los palos de lado a lado. */
+  header { border-bottom: none; }
+
   .mascota {
     filter: invert(19%) sepia(64%) saturate(2800%) hue-rotate(325deg)
             brightness(94%) contrast(96%)
             drop-shadow(0 0 14px rgba(195, 48, 85, 0.45));
-    transition: filter 1.1s ease;
+    transition: filter 1.2s ease;
   }
   :root.azul .mascota {
     filter: invert(24%) sepia(58%) saturate(1400%) hue-rotate(178deg)
@@ -53,122 +64,156 @@
             drop-shadow(0 0 16px rgba(49, 135, 196, 0.5));
   }
 
-  /* El marco: lo que queda entre las dos franjas de palos */
-  .mesa {
-    margin-top: 26px;
-    border: 1px solid var(--borde);
-    border-radius: 16px;
-    background:
-      linear-gradient(180deg, rgba(var(--acento-rgb), 0.10), transparent 45%),
-      var(--negro-carta);
-    padding: 30px 26px 26px;
-    min-height: 380px;
-    position: relative;
-    overflow: hidden;
-    transition: background 1.1s ease, border-color 1.1s ease;
-  }
-  /* Las esquinas del tapete, como las de una mesa de cartas */
-  .mesa::before, .mesa::after {
-    content: '';
-    position: absolute; width: 58px; height: 58px;
-    border: 1px solid rgba(var(--acento-rgb), 0.5);
-    transition: border-color 1.1s ease;
-  }
-  .mesa::before { top: 12px; left: 12px; border-right: none; border-bottom: none;
-    border-top-left-radius: 10px; }
-  .mesa::after { bottom: 12px; right: 12px; border-left: none; border-top: none;
-    border-bottom-right-radius: 10px; }
-
-  .mesa-titulo {
-    font-family: 'Cinzel', Georgia, serif;
-    font-size: 1.15rem; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--acento-claro); text-align: center; margin-bottom: 8px;
-    transition: color 1.1s ease;
-  }
-  .mesa-nota {
-    text-align: center; color: var(--texto-suave); font-size: 0.88rem;
-    line-height: 1.7; max-width: 560px; margin: 0 auto 26px;
-  }
-
-  /* ---------- Las minigráficas ---------- */
+  /* ---------- Los dos halos ---------- */
   /*
-    Dos cintas de gráficas en marcha. La de arriba va hacia la izquierda y la
-    de abajo hacia la derecha: justo al revés que los palos de su lado, para
-    que se note que son dos capas distintas y no un mismo bloque moviéndose.
+    Son DOS elementos, no uno que se mueve. El de arriba se apaga y el de
+    abajo se enciende a la vez, así que la luz parece cambiar de sitio sin
+    que nada se desplace. Y el de abajo es el mismo degradado del revés:
+    la elipse pegada al borde inferior en vez de al superior.
   */
-  .cinta {
-    overflow: hidden;
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
-            mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
-    margin: 0 -26px;
+  .halo {
+    position: fixed; left: 0; right: 0;
+    height: 62vh; pointer-events: none; z-index: 0;
+    transition: opacity 1.25s ease, background 1.2s ease;
   }
-  .cinta + .cinta { margin-top: 14px; }
-  .cinta-pista { display: flex; gap: 14px; width: max-content; padding: 0 7px; }
-  .cinta.hacia-izq .cinta-pista { animation: cinta-izq 38s linear infinite; }
-  .cinta.hacia-der .cinta-pista { animation: cinta-der 46s linear infinite; }
+  .halo.arriba {
+    top: 0;
+    background: radial-gradient(ellipse 80% 62% at 50% 0%, var(--fondo-halo), transparent 72%);
+  }
+  .halo.abajo {
+    bottom: 0; opacity: 0;
+    background: radial-gradient(ellipse 80% 62% at 50% 100%, var(--fondo-halo), transparent 72%);
+  }
+  .halo.arriba.apagado { opacity: 0; }
+  .halo.abajo.encendido { opacity: 1; }
 
-  @keyframes cinta-izq {
+  /* ---------- Las franjas de arriba ---------- */
+  /*
+    Van a lo ancho de la pantalla entera, no dentro de .app: es lo que hace
+    que se lean como una cinta y no como un bloque más de la página.
+  */
+  .franjas {
+    position: relative; z-index: 1;
+    margin-top: 6px;
+  }
+  .franja {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+            mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  }
+  .franja-pista { display: flex; width: max-content; will-change: transform; }
+
+  /* Las gráficas: una sola cinta, y va al revés que la primera fila de
+     palos que tiene justo debajo. */
+  .franja-graficas .franja-pista { gap: 14px; padding: 0 7px;
+    animation: rodar-izquierda 44s linear infinite; }
+
+  .franja-graficas {
+    opacity: 0; transform: translateY(-10px);
+    transition: opacity 1.1s ease, transform 1.1s ease;
+  }
+  .franja-graficas.visible { opacity: 1; transform: translateY(0); }
+
+  /* Los palos: dos filas, una hacia cada lado. Son los dos trenes. */
+  /* Un respiro entre las gráficas y los palos: pegados, las dos cintas se
+     leían como un bloque en vez de como dos cosas distintas. */
+  .franja-palos { height: 38px; }
+  .franja-palos.hacia-der { margin-top: 10px; }
+  .franja-palos .franja-pista {
+    gap: 44px; align-items: center; height: 100%; padding: 0 20px;
+  }
+  .franja-palos.hacia-der .franja-pista { animation: rodar-derecha 52s linear infinite; }
+  .franja-palos.hacia-izq .franja-pista { animation: rodar-izquierda 46s linear infinite; }
+
+  /* Entran como dos trenes: desde fuera de la pantalla, deprisa y frenando
+     al final. Cada fila por el lado hacia el que luego se mueve. */
+  .franja-palos { opacity: 0; }
+  .franja-palos.hacia-der { transform: translateX(-100%); }
+  .franja-palos.hacia-izq { transform: translateX(100%); }
+  .franja-palos.entrada {
+    opacity: 1; transform: translateX(0);
+    transition: transform 0.78s cubic-bezier(.16,.9,.3,1), opacity 0.35s ease;
+  }
+
+  @keyframes rodar-izquierda {
     from { transform: translateX(0); }      to { transform: translateX(-50%); }
   }
-  @keyframes cinta-der {
+  @keyframes rodar-derecha {
     from { transform: translateX(-50%); }   to { transform: translateX(0); }
   }
 
-  /* Quien pide menos movimiento en su sistema quiere que PARE, no que vaya
-     más rápido: la regla general de joker.css acorta las duraciones, y en una
-     animación infinita eso sería un parpadeo. Aquí se quita del todo. */
+  /* Con menos movimiento no hay cintas rodando: se quedan quietas y ya */
   @media (prefers-reduced-motion: reduce) {
-    .cinta .cinta-pista { animation: none !important; }
+    .franja-pista { animation: none !important; }
   }
 
+  /* ---------- Las minigráficas ---------- */
   .minigrafica {
     flex-shrink: 0;
-    width: 168px;
+    width: 162px;
     background: var(--negro-elevado);
     border: 1px solid var(--borde);
     border-radius: 10px;
-    padding: 11px 13px 8px;
-    transition: background-color 1.1s ease, border-color 1.1s ease;
+    padding: 10px 12px 7px;
+    transition: background-color 1.2s ease, border-color 1.2s ease;
   }
   .minigrafica .nombre {
-    font-size: 0.72rem; letter-spacing: 0.1em; color: var(--texto-suave);
+    font-size: 0.7rem; letter-spacing: 0.1em; color: var(--texto-suave);
     text-transform: uppercase; display: flex; justify-content: space-between;
     align-items: baseline; gap: 8px;
   }
-  .minigrafica .variacion { font-size: 0.72rem; font-weight: 600; }
+  .minigrafica .variacion { font-size: 0.7rem; font-weight: 600; }
   .minigrafica .variacion.sube { color: var(--acento-vivo); }
   .minigrafica .variacion.baja { color: var(--texto-suave); }
-  .minigrafica svg { display: block; width: 100%; height: 38px; margin-top: 6px; }
+  .minigrafica svg { display: block; width: 100%; height: 34px; margin-top: 5px; }
 
-  .placeholder-aviso {
-    margin-top: 26px; text-align: center;
-    font-size: 0.76rem; color: #6b585e; line-height: 1.6;
+  /* ---------- El centro ---------- */
+  /* Libre a propósito: es donde irá lo que se pida para esta sala. */
+  .centro {
+    margin-top: 40px;
+    min-height: 44vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    opacity: 0; transition: opacity 1s ease;
+  }
+  .centro.visible { opacity: 1; }
+  .centro .titulo {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 1.2rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--acento-claro); margin-bottom: 10px;
+    transition: color 1.2s ease;
+  }
+  .centro .nota {
+    color: var(--texto-suave); font-size: 0.88rem; line-height: 1.75;
+    max-width: 520px;
   }
 
-  /* ---------- El botón de abrir la mesa ---------- */
-  .abrir-caja { text-align: center; margin-top: 26px; }
+  /* ---------- El botón de abrir ---------- */
+  .abrir-caja { text-align: center; margin-top: 30px; }
   .abrir-caja .boton { margin-top: 0; }
-  .abrir-caja.hecho { opacity: 0; pointer-events: none; height: 0;
-    margin: 0; overflow: hidden; transition: opacity .5s ease; }
+  .abrir-caja.hecho {
+    opacity: 0; pointer-events: none; height: 0; margin: 0;
+    overflow: hidden; transition: opacity .45s ease;
+  }
 
-  /* El halo, cuando se va abajo */
-  .halo.abajo { top: 42vh; height: 58vh; }
-
-  /* Mientras la mesa no está abierta, el marco espera apagado */
-  .mesa { opacity: 0.25; transform: translateY(14px);
-          transition: opacity 1s ease .5s, transform 1s ease .5s,
-                      background 1.1s ease, border-color 1.1s ease; }
-  .mesa.abierta { opacity: 1; transform: translateY(0); }
+  @media (max-width: 720px) {
+    .franja-palos { height: 32px; }
+    .franja-palos .palo { font-size: 20px; }
+    .minigrafica { width: 140px; }
+  }
 </style>
 </head>
 <body>
 
-<div class="halo" id="halo" aria-hidden="true"></div>
+<div class="halo arriba" id="halo-arriba" aria-hidden="true"></div>
+<div class="halo abajo"  id="halo-abajo"  aria-hidden="true"></div>
 
+<!-- Las columnas de los laterales, como en el resto de la web. Aquí se van
+     en cuanto se abre la sala. -->
 {% include '_palos.html' %}
 
 <div class="app">
-
   <header>
     <img src="/mascota" alt="" class="mascota" onerror="this.style.display='none'">
     <div>
@@ -177,7 +222,22 @@
     </div>
     {% with sala='inversiones' %}{% include '_salas.html' %}{% endwith %}
   </header>
+</div>
 
+<!-- A lo ancho de la pantalla, por debajo del logo y los botones -->
+<div class="franjas">
+  <div class="franja franja-graficas" id="franja-graficas">
+    <div class="franja-pista" id="pista-graficas"></div>
+  </div>
+  <div class="franja franja-palos hacia-der" id="palos-fila-1" aria-hidden="true">
+    <div class="franja-pista palos-fila"></div>
+  </div>
+  <div class="franja franja-palos hacia-izq" id="palos-fila-2" aria-hidden="true">
+    <div class="franja-pista palos-fila"></div>
+  </div>
+</div>
+
+<div class="app">
   <div class="abrir-caja" id="abrir-caja">
     <button class="boton" id="abrir">&clubs; Abrir la mesa</button>
     <div class="pista" style="margin-top:10px">
@@ -185,20 +245,12 @@
     </div>
   </div>
 
-  <div class="mesa" id="mesa">
-    <div class="mesa-titulo">La mesa está puesta</div>
-    <div class="mesa-nota">
-      Aquí dentro irán las cotizaciones, tu cartera y las alertas al móvil.
-      Todavía no hay ni un dato de verdad: lo que ves moverse son gráficas de
-      ejemplo, para que el marco enseñe cómo va a quedar.
-    </div>
-
-    <div class="cinta hacia-izq"><div class="cinta-pista" id="cinta-arriba"></div></div>
-    <div class="cinta hacia-der"><div class="cinta-pista" id="cinta-abajo"></div></div>
-
-    <div class="placeholder-aviso">
-      Ninguna de estas cifras es real. Cuando esto se conecte a un mercado de
-      verdad, lo primero que verás aquí será un aviso diciéndolo.
+  <div class="centro" id="centro">
+    <div class="titulo">La mesa está puesta</div>
+    <div class="nota">
+      Este hueco es el sitio de las inversiones: la cartera, las cotizaciones
+      y las alertas. Todavía no hay nada aquí porque todavía no toca.
+      Lo de arriba son gráficas de ejemplo, para que se vea el marco.
     </div>
   </div>
 
@@ -206,7 +258,6 @@
     Cuando esta sala funcione, seguirá sin ser asesoramiento financiero:
     enseñará tus números, no te dirá dónde meter el dinero.
   </div>
-
 </div>
 
 {% include '_joker_boton.html' %}
@@ -215,9 +266,9 @@
   // ====================================================================
   // LAS MINIGRÁFICAS DE EJEMPLO
   // ====================================================================
-  // Son inventadas y no disimulan que lo son: los nombres son de palos de la
-  // baraja, no de empresas reales, para que a nadie se le ocurra leerlas como
-  // una cotización. Lo único de verdad aquí es la forma que tendrá la sala.
+  // Son inventadas y no lo disimulan: se llaman como cartas de la baraja, no
+  // como empresas reales, para que a nadie se le ocurra leerlas como una
+  // cotización de verdad.
 
   const EJEMPLOS = [
     'PICA', 'CORAZÓN', 'DIAMANTE', 'TRÉBOL', 'COMODÍN', 'AS', 'REINA', 'REY',
@@ -253,23 +304,23 @@
     cab.className = 'nombre';
     const etiq = document.createElement('span');
     etiq.textContent = nombre;
-    const var_ = document.createElement('span');
-    var_.className = 'variacion ' + (sube ? 'sube' : 'baja');
-    var_.textContent = (sube ? '+' : '') + cambio.toFixed(1) + '%';
-    cab.append(etiq, var_);
+    const varia = document.createElement('span');
+    varia.className = 'variacion ' + (sube ? 'sube' : 'baja');
+    varia.textContent = (sube ? '+' : '') + cambio.toFixed(1) + '%';
+    cab.append(etiq, varia);
 
     const NS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('viewBox', '0 0 100 40');
+    svg.setAttribute('viewBox', '0 0 100 36');
     svg.setAttribute('preserveAspectRatio', 'none');
     svg.setAttribute('aria-hidden', 'true');
 
     const d = puntos.map((p, i) =>
-      `${i === 0 ? 'M' : 'L'} ${(i / (puntos.length - 1) * 100).toFixed(1)} ${(40 - p * 0.36).toFixed(1)}`
+      `${i === 0 ? 'M' : 'L'} ${(i / (puntos.length - 1) * 100).toFixed(1)} ${(36 - p * 0.32).toFixed(1)}`
     ).join(' ');
 
     const relleno = document.createElementNS(NS, 'path');
-    relleno.setAttribute('d', d + ' L 100 40 L 0 40 Z');
+    relleno.setAttribute('d', d + ' L 100 36 L 0 36 Z');
     relleno.setAttribute('fill', 'currentColor');
     relleno.setAttribute('opacity', sube ? '0.14' : '0.07');
 
@@ -280,25 +331,34 @@
     linea.setAttribute('stroke-width', '1.4');
     linea.setAttribute('stroke-linejoin', 'round');
 
-    // currentColor hereda del texto, así que las líneas también viran a azul
+    // currentColor hereda del texto, así que las líneas viran a azul con todo
     svg.style.color = sube ? 'var(--acento-vivo)' : 'var(--texto-suave)';
     svg.append(relleno, linea);
     caja.append(cab, svg);
     return caja;
   }
 
-  for (const [pista, desfase] of [['cinta-arriba', 0], ['cinta-abajo', 100]]) {
-    const caja = document.getElementById(pista);
+  (function montarCintas() {
+    // Gráficas: la pista va duplicada, igual que los palos, para que el
+    // bucle encaje al desplazar el 50%.
+    const pista = document.getElementById('pista-graficas');
     const grupo = document.createDocumentFragment();
-    EJEMPLOS.forEach((nombre, i) => grupo.appendChild(minigrafica(nombre, i + 1 + desfase)));
-    // Duplicada, igual que los palos: al desplazar el 50% el bucle encaja
-    caja.appendChild(grupo.cloneNode(true));
-    caja.appendChild(grupo);
-  }
+    EJEMPLOS.forEach((nombre, i) => grupo.appendChild(minigrafica(nombre, i + 1)));
+    pista.appendChild(grupo.cloneNode(true));
+    pista.appendChild(grupo);
+
+    // Palos de las dos filas: los monta la misma función que las columnas
+    // de los laterales, que vive en _palos.html.
+    document.querySelectorAll('.palos-fila').forEach(
+      (fila, i) => window.rellenarPalos(fila, i + 1, 14));
+  })();
 
   // ====================================================================
-  // LA ENTRADA: de burdeos a azul
+  // LA ENTRADA
   // ====================================================================
+  // El orden importa: primero se va lo que estorba, después cambia el color,
+  // y solo entonces entra lo nuevo. Si todo pasara a la vez, no se leería
+  // ningún paso.
 
   const sinAnimaciones = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let abierta = false;
@@ -308,32 +368,41 @@
     abierta = true;
 
     document.getElementById('abrir-caja').classList.add('hecho');
+    const ritmo = sinAnimaciones ? 0 : 1;
 
-    // 1. Los palos se paran en seco, como una mano que se detiene
+    // 1. Las columnas se van, cada una por el borde que tiene más cerca
     const columnas = [...document.querySelectorAll('.palos')];
-    columnas.forEach(c => c.classList.add('parados'));
+    columnas.forEach(c => c.classList.add('fuera'));
 
-    const esperar = sinAnimaciones ? 0 : 1;
-
-    // 2. Un momento después, todo vira al azul y el halo baja
+    // 2. A media salida, la sala vira a azul y la luz cambia de sitio: el
+    //    halo de arriba se apaga mientras el de abajo se enciende
     setTimeout(() => {
       document.documentElement.classList.add('azul');
-      document.getElementById('halo').classList.add('abajo');
-    }, 380 * esperar);
+      document.getElementById('halo-arriba').classList.add('apagado');
+      document.getElementById('halo-abajo').classList.add('encendido');
+    }, 260 * ritmo);
 
-    // 3. Y los palos se tumban: arriba la izquierda, abajo la derecha
+    // 3. Cuando las columnas ya no están, entran las dos filas de palos.
+    //    Cada una por su lado y con 120 ms de diferencia, que es lo que hace
+    //    que parezcan dos trenes cruzándose y no un bloque.
     setTimeout(() => {
-      columnas.forEach(c => {
-        c.classList.remove('parados');
-        c.classList.add('horizontal');
-      });
-      document.getElementById('mesa').classList.add('abierta');
-    }, 760 * esperar);
+      document.getElementById('palos-fila-1').classList.add('entrada');
+      setTimeout(() => document.getElementById('palos-fila-2').classList.add('entrada'),
+                 120 * ritmo);
+      // Las columnas, ya fuera de la pantalla, dejan de existir para el ratón
+      columnas.forEach(c => { c.style.display = 'none'; });
+    }, 620 * ritmo);
+
+    // 4. Y por último las gráficas, asomando poco a poco
+    setTimeout(() => {
+      document.getElementById('franja-graficas').classList.add('visible');
+      document.getElementById('centro').classList.add('visible');
+    }, 1180 * ritmo);
   }
 
   document.getElementById('abrir').addEventListener('click', abrirMesa);
 
-  // Se abre sola: el botón está para quien no quiera esperar, no como peaje.
+  // Se abre sola: el botón está para quien no quiera esperar, no de peaje.
   setTimeout(abrirMesa, sinAnimaciones ? 0 : 900);
 </script>
 </body>
