@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import unicodedata
 from pathlib import Path
 
 BASE_DATOS = Path(__file__).parent / "joker.db"
@@ -541,11 +542,14 @@ def _elegir_ejercicios(grupos: list, limitaciones: list, variante: int = 0) -> l
         if aptos:
             elegido = aptos[variante % len(aptos)]
 
-            # ¿Hubo que descartar alguno mejor por una limitación? Lo anotamos
-            # como usado para no repetir el mismo aviso en cada hueco del mismo
-            # grupo muscular ("en lugar de sentadilla" tres veces seguidas).
+            # ¿Hubo que descartar alguno mejor por una LESIÓN? Solo avisamos en
+            # ese caso: si la limitación es "sin material" o "poco tiempo", que
+            # cambie casi todo es lo esperado, y repetirlo en cada línea sería
+            # ruido que tapa los avisos que sí importan.
+            lesiones = [l for l in limitaciones
+                        if l not in ("sin_material", "poco_tiempo")]
             descartado = next((e for e in candidatos if e is not elegido
-                               and not _ejercicio_valido(e, limitaciones)), None)
+                               and not _ejercicio_valido(e, lesiones)), None) if lesiones else None
             if descartado:
                 usados.add(descartado["nombre"])
 
@@ -557,13 +561,26 @@ def _elegir_ejercicios(grupos: list, limitaciones: list, variante: int = 0) -> l
             })
             usados.add(elegido["nombre"])
         else:
-            # Ninguno vale: proponemos la alternativa del primero
-            elegidos.append({
-                "nombre": candidatos[0]["alt"],
-                "grupo": grupo,
-                "alternativa": None,
-                "sustituye_a": candidatos[0]["nombre"],
-            })
+            # Ningún candidato nuevo vale. Antes de tirar del texto de
+            # alternativa (que NO está comprobado contra las limitaciones y
+            # podría proponer justo lo que hay que evitar), rebuscamos en todo
+            # el catálogo del grupo por si hay alguno válido ya usado: repetir
+            # un ejercicio seguro es mejor que sugerir uno contraindicado.
+            del_grupo = [e for e in EJERCICIOS if e["grupo"] == grupo]
+            seguros = [e for e in del_grupo if _ejercicio_valido(e, limitaciones)]
+
+            if seguros:
+                elegido = seguros[variante % len(seguros)]
+                elegidos.append({
+                    "nombre": elegido["nombre"],
+                    "grupo": grupo,
+                    "alternativa": elegido["alt"],
+                    "sustituye_a": None,
+                })
+            else:
+                # De verdad no hay nada seguro para este grupo: mejor saltarlo
+                # que recomendar algo que puede hacer daño.
+                continue
 
     return elegidos
 
@@ -732,118 +749,199 @@ def sugerir_menu(calorias_objetivo: int, proteina_objetivo: int) -> dict:
 # Consejos y plan completo
 # ---------------------------------------------------------------------------
 
-def generar_consejos(perfil: dict, metricas: dict, plazo: dict) -> list:
-    """Avisos y recomendaciones adaptados a este perfil concreto."""
+def generar_consejos(perfil: dict, metricas: dict, plazo: dict,
+                     nutricion: dict | None = None) -> list:
+    """
+    Recomendaciones para ESTE perfil, citando sus números.
+
+    La diferencia con un consejo de manual: en vez de "duerme bien", aquí sale
+    "con 2235 kcal y 4 días de entreno, tus 202 g de proteína salen a ~50 g por
+    comida". Si no menciona algo concreto del usuario, no debería estar aquí.
+    """
     consejos = []
     objetivo = perfil.get("objetivo", "mantener")
     nivel = perfil.get("nivel", "principiante")
     limitaciones = perfil.get("limitaciones", [])
     dias = int(perfil.get("dias_semana", 3))
+    peso = float(perfil["peso"])
+    edad = int(perfil["edad"])
+    actividad = perfil.get("actividad", "moderado")
+    nutricion = nutricion or {}
+    kcal = nutricion.get("calorias")
+    proteina = nutricion.get("proteina_g")
 
-    # Sobre la meta: primero si es sana, luego si da tiempo
+    # --- Avisos sobre la meta (lo primero, porque puede invalidar el resto) ---
     if plazo.get("meta_insana"):
-        consejos.append({
-            "tipo": "aviso",
-            "texto": plazo["meta_insana"]["motivo"],
-        })
+        consejos.append({"tipo": "aviso", "texto": plazo["meta_insana"]["motivo"]})
     if plazo.get("aplica") and not plazo.get("realista"):
-        consejos.append({
-            "tipo": "aviso",
-            "texto": plazo["ajuste_sugerido"]["motivo"],
-        })
+        consejos.append({"tipo": "aviso", "texto": plazo["ajuste_sugerido"]["motivo"]})
 
-    # Sobre el IMC
     if metricas["imc"] < 18.5 and objetivo == "perder_grasa":
         consejos.append({
             "tipo": "aviso",
-            "texto": ("Tu IMC ya está por debajo del rango saludable. Perder más peso "
-                      "no es buena idea: replantéate el objetivo hacia ganar músculo."),
+            "texto": (f"Tu IMC es {metricas['imc']}, por debajo del rango saludable. "
+                      f"Perder más peso no te conviene: con tu altura, ganar músculo "
+                      f"hasta los {metricas['peso_saludable_min']} kg sería un objetivo "
+                      f"mucho más sensato."),
         })
     elif metricas["imc"] >= 30 and objetivo == "ganar_peso":
         consejos.append({
             "tipo": "aviso",
-            "texto": ("Con tu IMC actual, ganar peso general no suele ser lo más "
-                      "recomendable. Plantéate ganar músculo manteniendo el peso."),
+            "texto": (f"Con un IMC de {metricas['imc']}, ganar peso general no es lo más "
+                      f"recomendable. Ganar músculo manteniéndote en los {peso} kg "
+                      f"actuales te dejaría mejor composición sin sumar grasa."),
         })
 
-    # Sobre la frecuencia
+    # --- Sobre sus calorías concretas ---
+    if kcal and proteina:
+        por_comida = round(proteina / 4)
+        consejos.append({
+            "tipo": "consejo",
+            "texto": (f"Tus {proteina} g de proteína salen a unos {por_comida} g por "
+                      f"comida repartidos en 4 tomas. Es la cifra que más cuesta "
+                      f"cumplir: si un día te quedas corto, ahí es donde primero se "
+                      f"nota."),
+        })
+
+    if kcal and metricas["mantenimiento"]:
+        hueco = metricas["mantenimiento"] - kcal
+        if hueco > 0:
+            consejos.append({
+                "tipo": "consejo",
+                "texto": (f"Tu déficit son {hueco} kcal al día, unas {hueco * 7} a la "
+                          f"semana. Eso equivale a algo menos de 1 kg de grasa al mes, "
+                          f"que es justo el ritmo que te sale en los plazos."),
+            })
+        elif hueco < 0:
+            consejos.append({
+                "tipo": "consejo",
+                "texto": (f"Comes {abs(hueco)} kcal por encima de tu mantenimiento. Si "
+                          f"en 2-3 semanas la báscula no se mueve, sube otras 150-200: "
+                          f"tu gasto real puede ser mayor que el que calcula la fórmula."),
+            })
+
+    # --- Sobre su frecuencia concreta ---
     if dias <= 2 and objetivo in ("ganar_musculo", "ganar_fuerza"):
         consejos.append({
             "tipo": "consejo",
-            "texto": (f"Con {dias} día(s) por semana se progresa, pero despacio. Si algún "
-                      "día puedes sacar un tercero, notarás bastante diferencia."),
+            "texto": (f"Con {dias} día(s) por semana cada músculo se entrena {dias} "
+                      f"veces, que es poco para crecer rápido. Como estás con cuerpo "
+                      f"entero, al menos no te dejas nada sin tocar: prioriza subir "
+                      f"peso en los básicos antes que añadir ejercicios."),
         })
-    if dias >= 6 and nivel == "principiante":
+    elif dias >= 6 and nivel == "principiante":
         consejos.append({
             "tipo": "consejo",
-            "texto": ("Empezando, 6-7 días es mucho: el músculo crece descansando, no "
-                      "entrenando. Con 3-4 días bien hechos irías igual de rápido y con "
-                      "menos riesgo de lesión."),
+            "texto": (f"{dias} días siendo principiante es mucho volumen. Tu cuerpo "
+                      f"todavía responde de sobra con 3-4, y el músculo crece "
+                      f"descansando. Bajar a 4 te daría el mismo avance con menos "
+                      f"riesgo de lesión."),
+        })
+    elif dias >= 4 and nivel == "principiante" and objetivo == "perder_grasa":
+        consejos.append({
+            "tipo": "consejo",
+            "texto": (f"{dias} días entrenando más el déficit de calorías es bastante "
+                      f"carga. Si notas que arrastras cansancio, quita un día antes de "
+                      f"quitar comida."),
         })
 
-    # Por limitación
-    if "rodilla" in limitaciones:
+    # --- Sobre su actividad diaria ---
+    if actividad == "sedentario":
         consejos.append({
-            "tipo": "adaptacion",
-            "texto": ("He quitado sentadillas profundas y saltos. El trabajo de glúteo e "
-                      "isquios (hip thrust, femoral) suele tolerarse bien y además "
-                      "estabiliza la rodilla."),
-        })
-    if "hombro" in limitaciones:
-        consejos.append({
-            "tipo": "adaptacion",
-            "texto": ("Fuera press por encima de la cabeza con barra y fondos profundos. "
-                      "El agarre neutro con mancuernas suele molestar mucho menos."),
-        })
-    if "espalda" in limitaciones:
-        consejos.append({
-            "tipo": "adaptacion",
-            "texto": ("Nada que cargue la zona lumbar sin apoyo: fuera peso muerto "
-                      "convencional y remo con barra. Con apoyo en banco trabajas lo mismo "
-                      "sin comprometer la espalda."),
-        })
-    if "sin_material" in limitaciones:
-        consejos.append({
-            "tipo": "adaptacion",
-            "texto": ("Todo el plan es con peso corporal y gomas. Cuando esos ejercicios "
-                      "se te queden cortos, sube repeticiones o baja más despacio: una "
-                      "goma barata multiplica las opciones."),
-        })
-    if "poco_tiempo" in limitaciones:
-        consejos.append({
-            "tipo": "adaptacion",
-            "texto": ("Sesiones recortadas a 4 ejercicios. Para ir aún más rápido, junta "
-                      "ejercicios de grupos distintos en superseries y descansa solo "
-                      "entre pares."),
+            "tipo": "consejo",
+            "texto": (f"Has marcado actividad sedentaria, así que casi todo tu gasto "
+                      f"({metricas['basal']} kcal de {metricas['mantenimiento']}) es "
+                      f"metabolismo basal. Caminar 8.000 pasos al día te subiría el "
+                      f"mantenimiento unas 200-300 kcal sin pisar el gimnasio."),
         })
 
-    # Según el objetivo
-    if objetivo == "perder_grasa":
+    # --- Sobre la edad ---
+    if edad >= 45:
         consejos.append({
             "tipo": "consejo",
-            "texto": ("Sigue entrenando fuerza aunque quieras perder grasa: es lo que le "
-                      "dice al cuerpo que conserve el músculo mientras adelgazas."),
+            "texto": (f"A partir de los 40 el músculo se pierde más rápido si no se "
+                      f"estimula. A tus {edad}, el entrenamiento de fuerza deja de ser "
+                      f"estético y pasa a ser salud: es lo que conserva masa y hueso."),
         })
-    elif objetivo in ("ganar_musculo", "ganar_peso"):
+
+    # --- Adaptaciones por limitación, citando lo que se ha cambiado ---
+    cambios = ejercicios_a_evitar(limitaciones)
+    for limitacion in limitaciones:
+        afectados = [c["ejercicio"] for c in cambios
+                     if LIMITACIONES[limitacion] in c["por"]]
+        if limitacion == "rodilla" and afectados:
+            consejos.append({
+                "tipo": "adaptacion",
+                "texto": (f"Por la rodilla he quitado {len(afectados)} ejercicios "
+                          f"({', '.join(afectados[:3])}...). En su lugar entras por "
+                          f"cadera: hip thrust y femoral cargan el tren inferior sin "
+                          f"flexionar tanto, y además estabilizan la articulación."),
+            })
+        elif limitacion == "hombro" and afectados:
+            consejos.append({
+                "tipo": "adaptacion",
+                "texto": (f"Por el hombro quedan fuera {len(afectados)} ejercicios, "
+                          f"sobre todo empujes por encima de la cabeza y fondos "
+                          f"profundos. El agarre neutro con mancuernas es tu amigo: "
+                          f"misma musculatura, mucha menos rotación interna."),
+            })
+        elif limitacion == "espalda" and afectados:
+            consejos.append({
+                "tipo": "adaptacion",
+                "texto": (f"Por la espalda he retirado lo que carga la zona lumbar sin "
+                          f"apoyo ({', '.join(afectados[:2])}...). Con el pecho apoyado "
+                          f"en un banco trabajas la misma espalda sin que la columna "
+                          f"sostenga el peso."),
+            })
+        elif limitacion == "muneca" and afectados:
+            consejos.append({
+                "tipo": "adaptacion",
+                "texto": (f"Por la muñeca fuera la barra recta en {len(afectados)} "
+                          f"ejercicios. Mancuernas y agarre neutro dejan la muñeca en "
+                          f"posición natural en vez de forzarla en extensión."),
+            })
+        elif limitacion == "sin_material":
+            consejos.append({
+                "tipo": "adaptacion",
+                "texto": ("Todo tu plan es con peso corporal y gomas. Cuando un "
+                          "ejercicio se te quede corto, no añadas repeticiones sin "
+                          "más: baja más despacio (3-4 segundos) y aguanta abajo. "
+                          "Es la forma de seguir progresando sin peso."),
+            })
+        elif limitacion == "poco_tiempo":
+            consejos.append({
+                "tipo": "adaptacion",
+                "texto": ("Sesiones recortadas a 4 ejercicios. Para apurar más, "
+                          "empareja ejercicios de grupos distintos (una de espalda con "
+                          "una de pecho) y descansa solo al terminar la pareja: "
+                          "recortas casi la mitad del tiempo."),
+            })
+
+    # --- Sobre su objetivo, con su cifra ---
+    if objetivo == "perder_grasa" and plazo.get("aplica"):
         consejos.append({
             "tipo": "consejo",
-            "texto": ("Si tras 2-3 semanas el peso no se mueve, sube unas 200 kcal. "
-                      "Ajustar sobre lo que ves en la báscula acierta más que cualquier "
-                      "fórmula."),
+            "texto": (f"Vas a perder {plazo['diferencia_kg']} kg. Sigue entrenando "
+                      f"fuerza igual de duro: es lo que decide si esos kilos salen de "
+                      f"la grasa o también del músculo. La báscula no distingue, tu "
+                      f"espejo sí."),
+        })
+    elif objetivo in ("ganar_musculo", "ganar_peso") and plazo.get("aplica"):
+        consejos.append({
+            "tipo": "consejo",
+            "texto": (f"Ganar {plazo['diferencia_kg']} kg a "
+                      f"{plazo['ritmo_semanal']} es lento a propósito. Ir más rápido no "
+                      f"acelera el músculo, solo añade grasa que luego hay que quitar."),
         })
     elif objetivo == "ganar_fuerza":
+        esquema = ESQUEMAS["ganar_fuerza"]
         consejos.append({
             "tipo": "consejo",
-            "texto": ("Con pocas repeticiones, la técnica manda. Añade peso solo cuando "
-                      "completes todas las series limpias."),
+            "texto": (f"Con {esquema['series']} series de {esquema['reps']} "
+                      f"repeticiones, la técnica manda sobre el peso. Sube carga solo "
+                      f"cuando completes las {esquema['series']} series limpias, no "
+                      f"cuando la última salga a duras penas."),
         })
-
-    # Universal
-    consejos.append({
-        "tipo": "consejo",
-        "texto": ("Dormir 7-9 horas influye en el resultado tanto como el entreno. Es lo "
-                  "más barato y lo que más se descuida."),
-    })
 
     return consejos
 
@@ -854,14 +952,20 @@ def plan_completo(perfil: dict) -> dict:
     nutricion = calcular_nutricion(perfil, metricas)
     plazo = estimar_plazo(perfil, metricas)
 
+    rutina, personalizada = rutina_actual(perfil)
+
     return {
         "perfil": perfil,
         "metricas": metricas,
         "nutricion": nutricion,
         "plazo": plazo,
-        "rutina": generar_rutina(perfil),
+        "rutina": rutina,
+        "rutina_personalizada": personalizada,
+        "rutina_sugerida": generar_rutina(perfil) if personalizada else rutina,
+        "evitar": ejercicios_a_evitar(perfil.get("limitaciones", [])),
+        "grafica": datos_grafica(perfil, plazo),
         "menu": sugerir_menu(nutricion["calorias"], nutricion["proteina_g"]),
-        "consejos": generar_consejos(perfil, metricas, plazo),
+        "consejos": generar_consejos(perfil, metricas, plazo, nutricion),
         "aviso": ("Estos números son orientativos, calculados con fórmulas estándar. "
                   "No son consejo médico. Si tienes alguna condición de salud o tomas "
                   "medicación, coméntalo con un profesional antes de cambiar tu dieta "
@@ -912,3 +1016,215 @@ def resumen_texto(plan: dict) -> str:
         lineas.append("Avisos: " + " ".join(avisos))
 
     return "\n".join(lineas)
+
+
+# ---------------------------------------------------------------------------
+# Registro de peso (para la gráfica de seguimiento)
+# ---------------------------------------------------------------------------
+
+def _tabla_pesos(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS pesos (
+            fecha TEXT PRIMARY KEY,
+            kg REAL NOT NULL
+        )
+    """)
+
+
+def registrar_peso(fecha: str, kg: float) -> None:
+    """Apunta el peso de un día. Si ese día ya tenía uno, lo reemplaza."""
+    with _conexion() as con:
+        _tabla_pesos(con)
+        con.execute(
+            "INSERT INTO pesos (fecha, kg) VALUES (?, ?) "
+            "ON CONFLICT(fecha) DO UPDATE SET kg = excluded.kg",
+            (fecha, float(kg)),
+        )
+
+
+def leer_pesos() -> list:
+    """Todos los pesos registrados, del más antiguo al más reciente."""
+    with _conexion() as con:
+        _tabla_pesos(con)
+        filas = con.execute("SELECT fecha, kg FROM pesos ORDER BY fecha").fetchall()
+    return [{"fecha": f["fecha"], "kg": f["kg"]} for f in filas]
+
+
+def borrar_peso(fecha: str) -> None:
+    with _conexion() as con:
+        _tabla_pesos(con)
+        con.execute("DELETE FROM pesos WHERE fecha = ?", (fecha,))
+
+
+def datos_grafica(perfil: dict, plazo: dict) -> dict:
+    """
+    Prepara lo que necesita la gráfica: los pesos que has ido apuntando y la
+    trayectoria esperada hasta tu meta.
+
+    La trayectoria no es una línea recta caprichosa: va del peso de partida al
+    objetivo en el tiempo que sale del cálculo de plazos, así que refleja el
+    ritmo sostenible real, no una promesa optimista.
+    """
+    from datetime import date, timedelta
+
+    registros = leer_pesos()
+
+    # El punto de partida: el primer peso apuntado, o el del perfil si no hay
+    if registros:
+        fecha_inicio = registros[0]["fecha"]
+        peso_inicio = registros[0]["kg"]
+    else:
+        fecha_inicio = date.today().isoformat()
+        peso_inicio = float(perfil["peso"])
+
+    proyeccion = []
+    if plazo.get("aplica"):
+        meta = float(plazo.get("meta_usada", perfil.get("peso_objetivo") or peso_inicio))
+        # Usamos el plazo largo (el ritmo lento): es el honesto, no el de folleto
+        semanas = max(plazo.get("semanas_max", 0), 1)
+
+        inicio = date.fromisoformat(fecha_inicio)
+        # Un punto por semana, para que la línea sea suave sin ser pesada
+        for semana in range(0, int(semanas) + 1):
+            avance = semana / semanas
+            proyeccion.append({
+                "fecha": (inicio + timedelta(weeks=semana)).isoformat(),
+                "kg": round(peso_inicio + (meta - peso_inicio) * avance, 2),
+            })
+
+    return {
+        "registros": registros,
+        "proyeccion": proyeccion,
+        "peso_objetivo": plazo.get("meta_usada") if plazo.get("aplica") else None,
+        "hay_datos": bool(registros),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Rutina personalizada (la que edita el usuario a mano)
+# ---------------------------------------------------------------------------
+
+def _tabla_rutina(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS rutina_propia (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            datos TEXT NOT NULL
+        )
+    """)
+
+
+def guardar_rutina_personalizada(rutina: list) -> None:
+    """Guarda la rutina que el usuario ha editado a su gusto."""
+    with _conexion() as con:
+        _tabla_rutina(con)
+        con.execute(
+            "INSERT INTO rutina_propia (id, datos) VALUES (1, ?) "
+            "ON CONFLICT(id) DO UPDATE SET datos = excluded.datos",
+            (json.dumps(rutina, ensure_ascii=False),),
+        )
+
+
+def leer_rutina_personalizada() -> list | None:
+    with _conexion() as con:
+        _tabla_rutina(con)
+        fila = con.execute("SELECT datos FROM rutina_propia WHERE id = 1").fetchone()
+    return json.loads(fila["datos"]) if fila else None
+
+
+def borrar_rutina_personalizada() -> None:
+    """Vuelve a la rutina que calcula JOKER."""
+    with _conexion() as con:
+        _tabla_rutina(con)
+        con.execute("DELETE FROM rutina_propia WHERE id = 1")
+
+
+def rutina_actual(perfil: dict) -> tuple:
+    """
+    Devuelve (rutina, es_personalizada).
+
+    Si el usuario ha editado su rutina, esa manda. Si no, la calcula JOKER.
+    """
+    propia = leer_rutina_personalizada()
+    if propia:
+        return propia, True
+    return generar_rutina(perfil), False
+
+
+# ---------------------------------------------------------------------------
+# Leer limitaciones escritas en lenguaje normal
+# ---------------------------------------------------------------------------
+# Para quien no sabe qué casilla marcar: escribe "me duele la rodilla al
+# agacharme y entreno en casa" y lo traducimos a las limitaciones del sistema.
+# Se hace con palabras clave, no con IA: es instantáneo, gratis y no se
+# inventa nada. La IA del chat puede hacer lo mismo si hace falta más matiz.
+
+def _sin_acentos(texto: str) -> str:
+    """Pasa a minúsculas y quita acentos, para comparar sin sorpresas."""
+    descompuesto = unicodedata.normalize("NFD", texto or "")
+    return "".join(c for c in descompuesto
+                   if unicodedata.category(c) != "Mn").strip().lower()
+
+
+_PISTAS_LIMITACION = {
+    "rodilla": ["rodilla", "rodillas", "menisco", "ligamento cruzado", "cruzado",
+                "rotula", "rótula", "patelar"],
+    "hombro": ["hombro", "hombros", "manguito", "rotador", "clavicula", "clavícula",
+               "deltoides lesion", "luxacion", "luxación"],
+    "espalda": ["espalda", "lumbar", "lumbares", "hernia", "cervical", "cervicales",
+                "ciatica", "ciática", "escoliosis", "columna", "riñones", "rinones"],
+    "muneca": ["muneca", "muñeca", "munecas", "muñecas", "tunel carpiano",
+               "túnel carpiano", "carpiano", "antebrazo"],
+    "sin_material": ["en casa", "sin material", "sin equipamiento", "no tengo gimnasio",
+                     "sin gimnasio", "no voy al gym", "no voy al gimnasio",
+                     "sin pesas", "sin maquinas", "sin máquinas", "peso corporal"],
+    "poco_tiempo": ["poco tiempo", "sin tiempo", "voy justo", "media hora",
+                    "30 minutos", "30 min", "45 minutos", "45 min", "rapido",
+                    "rápido", "corto", "no tengo tiempo", "trabajo mucho"],
+}
+
+
+def interpretar_limitaciones(texto: str) -> dict:
+    """
+    Convierte una descripción escrita a mano en limitaciones del sistema.
+
+    Devuelve las detectadas y, por transparencia, qué palabra disparó cada una
+    (para que el usuario vea por qué se ha marcado y pueda corregirlo).
+    """
+    limpio = _sin_acentos(texto)
+    detectadas = {}
+
+    for limitacion, pistas in _PISTAS_LIMITACION.items():
+        for pista in pistas:
+            if _sin_acentos(pista) in limpio:
+                detectadas[limitacion] = pista
+                break
+
+    return {
+        "limitaciones": list(detectadas.keys()),
+        "motivos": {k: f'detecté "{v}"' for k, v in detectadas.items()},
+        "nombres": {k: LIMITACIONES[k] for k in detectadas},
+    }
+
+
+def ejercicios_a_evitar(limitaciones: list) -> list:
+    """
+    Con qué ejercicios hay que tener cuidado, y por cuál cambiarlos.
+
+    Sirve para que el usuario (y JOKER por el chat) sepa exactamente en qué
+    limitarse, no solo que "hay limitaciones".
+    """
+    if not limitaciones:
+        return []
+
+    evitar = []
+    for ejercicio in EJERCICIOS:
+        motivos = [l for l in limitaciones if l in ejercicio["evitar"]
+                   and l not in ("sin_material", "poco_tiempo")]
+        if motivos:
+            evitar.append({
+                "ejercicio": ejercicio["nombre"],
+                "grupo": ejercicio["grupo"],
+                "por": [LIMITACIONES[m] for m in motivos],
+                "cambiar_por": ejercicio["alt"],
+            })
+    return evitar

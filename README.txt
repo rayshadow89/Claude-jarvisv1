@@ -112,6 +112,13 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
     esquivando lesiones, propone menú y estima plazos realistas. Los
     datos personales se guardan en una base local que no se sube.
 
+12. J0KER GYM, segunda vuelta: gráfica de peso (lo registrado frente a
+    lo previsto), rutina editable a mano o generada por JOKER,
+    limitaciones que se pueden escribir en lenguaje normal, lista de
+    ejercicios a evitar, recomendaciones que citan tus cifras concretas
+    en vez de consejos genéricos, y los números movidos a un apartado
+    aparte de "Datos adicionales".
+
 
 FICHEROS DEL PROYECTO
 ----------------------
@@ -195,23 +202,73 @@ J0KER GYM
 Apartado de entrenamiento, en http://127.0.0.1:5000/gym (o pulsando
 "J0KER GYM" arriba a la derecha en el chat).
 
-Metes tus datos una vez (peso, altura, edad, objetivo, días que puedes
-entrenar y las limitaciones que tengas) y te calcula:
+Metes tus datos una vez y te calcula:
 
-  - Tus números: IMC, metabolismo basal, calorías de mantenimiento, las
-    calorías que te tocan según tu objetivo, macros y litros de agua.
-  - Cuánto vas a tardar en llegar a tu meta, a un ritmo sostenible. Si la
-    meta no es sana o es inalcanzable, te lo dice y te propone otra.
-  - La rutina de los 7 días, esquivando tus lesiones y adaptada al
-    material que tengas (o a no tener ninguno).
-  - Un menú del día que cuadra con tus calorías.
-  - Recomendaciones adaptadas a tu caso concreto.
+  TU META
+    Cuánto tardas en llegar, a un ritmo sostenible. Si la meta no es sana
+    o no es alcanzable, te lo dice y te propone otra.
 
-JOKER también lo conoce: puedes preguntarle por el chat "¿qué me toca
-entrenar hoy?" o "¿cuántas calorías tengo que comer?" y te lo lee de ahí,
-sin inventarse nada.
+  TU PESO (la gráfica)
+    Apuntas tu peso cada día y ves tu evolución real frente a la
+    trayectoria prevista hasta tu meta. Eje X el tiempo, eje Y los kilos.
+    Pasando el ratón te dice el dato de cada día.
+    Tu peso va en burdeos y sólido; lo previsto en azul y discontinuo
+    (los colores están comprobados para que se distingan también con
+    daltonismo, y además una línea es continua y la otra no).
 
-Los datos se guardan en joker.db, un fichero local que NO se sube a
+  LA SEMANA
+    Los 7 días con sus ejercicios, series, repeticiones y descansos.
+    PUEDES EDITARLA: el botón "Editar mi rutina" te deja cambiar cada
+    ejercicio por otro, quitar los que no quieras, añadir más, o
+    convertir un día de descanso en día de entreno. Al editar, el
+    desplegable te avisa con ⚠ si un ejercicio choca con tus lesiones.
+    Si prefieres no complicarte, "Que la haga JOKER" vuelve a la
+    calculada automáticamente.
+
+  OJO CON ESTOS EJERCICIOS
+    La lista concreta de lo que debes evitar según tus lesiones, con por
+    cuál cambiar cada uno.
+
+  MENÚ DE HOY
+    Desayuno, comida, cena y snacks que cuadran con tus calorías.
+
+  RECOMENDACIONES
+    Centradas en TU perfil: citan tus calorías, tus gramos de proteína,
+    tus días de entreno y los ejercicios concretos que se te han
+    cambiado. Nada de consejos de manual.
+
+  DATOS ADICIONALES
+    Al final: IMC, metabolismo basal, mantenimiento, macros, agua y el
+    rango de peso saludable para tu altura.
+
+
+LAS LIMITACIONES, SIN SABER CUÁL MARCAR
+-----------------------------------------
+
+Puedes marcar las casillas a mano, o escribirlo con tus palabras en el
+recuadro de abajo:
+
+  "me duele la rodilla al agacharme y entreno en casa sin material"
+
+Pulsas "Que lo interprete JOKER" y te marca las casillas que
+correspondan, diciéndote cuáles ha marcado para que lo revises.
+
+A partir de ahí, la rutina esquiva sola los ejercicios que no te
+convienen. Está comprobado con 192 combinaciones distintas de lesiones:
+en ninguna se cuela un ejercicio contraindicado.
+
+
+JOKER TAMBIÉN LO CONOCE
+-------------------------
+
+Puedes preguntarle por el chat "¿qué me toca entrenar hoy?" o "¿cuántas
+calorías tengo que comer?" y te lo lee del plan, sin inventarse nada.
+
+
+DÓNDE SE GUARDAN TUS DATOS
+----------------------------
+
+En joker.db, un fichero local en tu carpeta del proyecto. NO se sube a
 GitHub (está en el .gitignore). Son tuyos y se quedan en tu ordenador.
 
 AVISO: los cálculos son orientativos, con fórmulas estándar (Mifflin-St
@@ -219,7 +276,7 @@ Jeor). No son consejo médico.
 
 Nota sobre los somatotipos: la clasificación ectomorfo/mesomorfo/endomorfo
 es de los años 40 y la ciencia moderna no la respalda como predictor. Está
-incluida porque se usa mucho, pero solo ajusta un +-5%. Lo que manda de
+incluida porque se usa mucho, pero solo ajusta un ±5%. Lo que manda de
 verdad es la fórmula de gasto calórico.
 
 

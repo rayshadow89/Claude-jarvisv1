@@ -178,6 +178,80 @@
   .cargando { text-align: center; color: var(--texto-suave); padding: 50px 0; }
   .oculto { display: none; }
 
+
+  /* ---------- Gráfica ---------- */
+  .grafica-caja { position: relative; }
+  .leyenda { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+  .leyenda-item { display: flex; align-items: center; gap: 7px;
+    font-size: 0.82rem; color: var(--texto-suave); }
+  .leyenda-marca { width: 20px; height: 3px; border-radius: 2px; }
+  .leyenda-marca.discontinua { background: repeating-linear-gradient(
+    to right, #3987e5 0 6px, transparent 6px 11px); }
+
+  .globo {
+    position: absolute; top: 10px; transform: translateX(-50%);
+    background: var(--negro-elevado); border: 1px solid var(--burdeos);
+    border-radius: 8px; padding: 9px 12px; pointer-events: none;
+    opacity: 0; transition: opacity 0.12s ease; font-size: 0.8rem;
+    white-space: nowrap; z-index: 5;
+  }
+  .globo-fecha { color: var(--texto-suave); font-size: 0.72rem; margin-bottom: 5px; }
+  .globo-fila { display: flex; align-items: center; gap: 7px; padding: 2px 0; }
+  .globo-punto { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  .registrar { display: flex; gap: 10px; align-items: flex-end;
+    flex-wrap: wrap; margin-top: 16px; }
+  .registrar > div { flex: 1; min-width: 130px; }
+  input[type=date] { width: 100%; background: var(--negro-elevado);
+    border: 1px solid var(--borde); color: var(--texto); font-family: inherit;
+    font-size: 0.95rem; padding: 10px 12px; border-radius: 8px; outline: none;
+    color-scheme: dark; }
+  .registrar .boton { margin-top: 0; padding: 10px 20px; }
+
+  .historial { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 7px; }
+  .peso-chip { display: flex; align-items: center; gap: 8px;
+    background: var(--negro-elevado); border: 1px solid var(--borde);
+    border-radius: 16px; padding: 5px 8px 5px 13px; font-size: 0.78rem; }
+  .peso-chip button { background: none; border: none; color: #6b585e;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 3px; }
+  .peso-chip button:hover { color: var(--burdeos-vivo); }
+
+  /* ---------- Rutina editable ---------- */
+  .barra-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .barra-acciones .boton { margin-top: 0; padding: 9px 18px; font-size: 0.84rem; }
+
+  .dia.editando { border-color: var(--burdeos); }
+  .dia li.editable { display: flex; align-items: center; gap: 6px; }
+  .dia li.editable select { flex: 1; font-size: 0.8rem; padding: 6px 8px; }
+  .quitar { background: none; border: none; color: #6b585e; cursor: pointer;
+    font-size: 1.1rem; line-height: 1; padding: 0 4px; flex-shrink: 0; }
+  .quitar:hover { color: var(--burdeos-vivo); }
+  .anadir { background: none; border: 1px dashed var(--borde); color: var(--texto-suave);
+    border-radius: 7px; padding: 7px; width: 100%; cursor: pointer;
+    font-family: inherit; font-size: 0.78rem; margin-top: 8px; }
+  .anadir:hover { border-color: var(--burdeos); color: var(--texto); }
+  .marca-propia { font-size: 0.7rem; color: var(--burdeos-claro);
+    letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* ---------- Limitaciones ---------- */
+  .describir { margin-top: 14px; }
+  .describir textarea { width: 100%; background: var(--negro-elevado);
+    border: 1px solid var(--borde); color: var(--texto); font-family: inherit;
+    font-size: 0.9rem; padding: 11px 13px; border-radius: 8px; outline: none;
+    resize: vertical; min-height: 66px; line-height: 1.5; }
+  .describir textarea:focus { border-color: var(--burdeos);
+    box-shadow: 0 0 0 3px rgba(125, 24, 50, 0.2); }
+  .describir textarea::placeholder { color: #6b585e; }
+
+  .evitar-lista { display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; }
+  .evitar-item { background: var(--negro-carta); border: 1px solid var(--borde);
+    border-left: 3px solid var(--burdeos-vivo); border-radius: 9px;
+    padding: 11px 14px; font-size: 0.84rem; }
+  .evitar-item .cual { font-weight: 500; }
+  .evitar-item .porque { font-size: 0.74rem; color: var(--burdeos-claro); margin-top: 3px; }
+  .evitar-item .cambio { font-size: 0.76rem; color: var(--texto-suave); margin-top: 5px; }
+
   @media (max-width: 620px) {
     h1 { font-size: 1.6rem; }
     .mascota { width: 40px; height: 54px; }
@@ -258,6 +332,16 @@
       <div style="margin-top:18px">
         <label>Limitaciones (marca las que tengas)</label>
         <div class="casillas" id="limitaciones"></div>
+
+        <div class="describir">
+          <label for="texto-limitaciones">¿No sabes cuál marcar? Cuéntalo con tus palabras</label>
+          <textarea id="texto-limitaciones"
+            placeholder="Por ejemplo: me duele la rodilla al agacharme, entreno en casa sin material y voy justo de tiempo"></textarea>
+          <button class="boton secundario" id="interpretar" style="margin-top:10px">
+            Que lo interprete JOKER
+          </button>
+          <div id="resultado-limitaciones"></div>
+        </div>
       </div>
 
       <div id="error-form"></div>
@@ -269,18 +353,55 @@
   <div id="plan" class="oculto">
 
     <section>
-      <h2>Tus números</h2>
-      <div class="numeros" id="numeros"></div>
-    </section>
-
-    <section id="seccion-meta">
       <h2>Tu meta</h2>
       <div class="tarjeta" id="meta"></div>
     </section>
 
     <section>
+      <h2>Tu peso</h2>
+      <div class="tarjeta">
+        <div class="leyenda">
+          <div class="leyenda-item">
+            <span class="leyenda-marca" style="background:#c33055"></span>
+            Tu peso registrado
+          </div>
+          <div class="leyenda-item">
+            <span class="leyenda-marca discontinua"></span>
+            Trayectoria prevista
+          </div>
+        </div>
+        <div class="grafica-caja" id="grafica"></div>
+
+        <div class="registrar">
+          <div>
+            <label for="peso-fecha">Día</label>
+            <input type="date" id="peso-fecha">
+          </div>
+          <div>
+            <label for="peso-kg">Peso (kg)</label>
+            <input type="number" id="peso-kg" min="25" max="300" step="0.1" placeholder="91.4">
+          </div>
+          <button class="boton" id="apuntar-peso">Apuntar</button>
+        </div>
+        <div id="error-peso"></div>
+        <div class="historial" id="historial"></div>
+      </div>
+    </section>
+
+    <section>
       <h2>La semana</h2>
+      <div class="barra-acciones">
+        <button class="boton secundario" id="editar-rutina">Editar mi rutina</button>
+        <button class="boton secundario oculto" id="guardar-rutina">Guardar cambios</button>
+        <button class="boton secundario oculto" id="cancelar-rutina">Cancelar</button>
+        <button class="boton secundario oculto" id="que-lo-haga">Que la haga JOKER</button>
+      </div>
       <div class="semana" id="semana"></div>
+    </section>
+
+    <section id="seccion-evitar">
+      <h2>Ojo con estos ejercicios</h2>
+      <div class="evitar-lista" id="evitar"></div>
     </section>
 
     <section>
@@ -294,6 +415,11 @@
       <div id="consejos"></div>
     </section>
 
+    <section>
+      <h2>Datos adicionales</h2>
+      <div class="numeros" id="numeros"></div>
+    </section>
+
     <button class="boton secundario" id="editar">Cambiar mis datos</button>
 
     <div class="nota-legal" id="aviso"></div>
@@ -304,6 +430,7 @@
 <script>
   const $ = (id) => document.getElementById(id);
   let opciones = null;
+  let planActual = null;   // el plan que se está mostrando ahora mismo
 
   // Rellena un <select> a partir de un diccionario {valor: descripción}
   function rellenarSelect(id, dic, porDefecto) {
@@ -317,6 +444,385 @@
       sel.appendChild(op);
     }
   }
+
+  // ====================================================================
+  // GRÁFICA DE PESO
+  // ====================================================================
+  // Dos series: lo que pesas de verdad y la trayectoria prevista hasta tu
+  // meta. Los colores están validados para daltonismo (ΔE 22 en deuteranopia,
+  // 30 en visión normal) y además la proyección va discontinua, así que la
+  // diferencia no depende solo del color.
+
+  const COLOR_REAL = '#c33055';        // burdeos de la casa
+  const COLOR_PREVISTO = '#3987e5';    // azul, validado contra el burdeos
+  const SUPERFICIE = '#14100f';
+
+  function dibujarGrafica(grafica) {
+    const caja = $('grafica');
+    caja.innerHTML = '';
+
+    const registros = grafica.registros || [];
+    const proyeccion = grafica.proyeccion || [];
+
+    if (!registros.length && !proyeccion.length) {
+      const vacio = document.createElement('div');
+      vacio.style.cssText = 'text-align:center;color:#6b585e;padding:40px 20px;line-height:1.7';
+      vacio.textContent = 'Apunta tu primer peso abajo y aquí verás tu evolución '
+                        + 'junto a la trayectoria prevista hasta tu meta.';
+      caja.appendChild(vacio);
+      return;
+    }
+
+    // --- Dimensiones ---
+    const ancho = Math.max(caja.clientWidth || 640, 320);
+    const alto = 320;
+    const margen = {arriba: 20, derecha: 18, abajo: 42, izquierda: 48};
+    const anchoUtil = ancho - margen.izquierda - margen.derecha;
+    const altoUtil = alto - margen.arriba - margen.abajo;
+
+    // --- Escalas ---
+    const todos = [...registros, ...proyeccion];
+    const fechas = todos.map(d => new Date(d.fecha).getTime());
+    const kilos = todos.map(d => d.kg);
+
+    const tMin = Math.min(...fechas), tMax = Math.max(...fechas);
+    let kMin = Math.min(...kilos), kMax = Math.max(...kilos);
+    const respiro = Math.max((kMax - kMin) * 0.15, 1);
+    kMin -= respiro; kMax += respiro;
+
+    const x = (fecha) => margen.izquierda +
+      (tMax === tMin ? anchoUtil / 2
+       : (new Date(fecha).getTime() - tMin) / (tMax - tMin) * anchoUtil);
+    const y = (kg) => margen.arriba + altoUtil - (kg - kMin) / (kMax - kMin) * altoUtil;
+
+    // --- SVG ---
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${ancho} ${alto}`);
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', alto);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Evolución de tu peso frente a la trayectoria prevista');
+
+    const crear = (tipo, atributos) => {
+      const el = document.createElementNS(NS, tipo);
+      for (const [k, v] of Object.entries(atributos)) el.setAttribute(k, v);
+      return el;
+    };
+
+    // --- Rejilla horizontal (fina y discreta, nunca discontinua) ---
+    const pasos = 5;
+    for (let i = 0; i <= pasos; i++) {
+      const kg = kMin + (kMax - kMin) * i / pasos;
+      const py = y(kg);
+      svg.appendChild(crear('line', {
+        x1: margen.izquierda, y1: py, x2: ancho - margen.derecha, y2: py,
+        stroke: '#2c2225', 'stroke-width': 1,
+      }));
+      const etiqueta = crear('text', {
+        x: margen.izquierda - 9, y: py + 4,
+        'text-anchor': 'end', fill: '#a49197', 'font-size': 11,
+      });
+      etiqueta.textContent = kg.toFixed(1);
+      svg.appendChild(etiqueta);
+    }
+
+    // Título del eje Y
+    const tituloY = crear('text', {
+      x: 14, y: margen.arriba + altoUtil / 2,
+      fill: '#a49197', 'font-size': 11, 'text-anchor': 'middle',
+      transform: `rotate(-90 14 ${margen.arriba + altoUtil / 2})`,
+    });
+    tituloY.textContent = 'kg';
+    svg.appendChild(tituloY);
+
+    // --- Eje X: unas pocas fechas, no todas ---
+    const formatoFecha = (iso) => {
+      const d = new Date(iso);
+      return d.toLocaleDateString('es-ES', {day: 'numeric', month: 'short'});
+    };
+    const marcasX = 5;
+    for (let i = 0; i <= marcasX; i++) {
+      const t = tMin + (tMax - tMin) * i / marcasX;
+      const iso = new Date(t).toISOString().slice(0, 10);
+      const etiqueta = crear('text', {
+        x: x(iso), y: alto - margen.abajo + 20,
+        'text-anchor': 'middle', fill: '#a49197', 'font-size': 11,
+      });
+      etiqueta.textContent = formatoFecha(iso);
+      svg.appendChild(etiqueta);
+    }
+
+    const linea = (puntos) => puntos.map((p, i) =>
+      `${i === 0 ? 'M' : 'L'} ${x(p.fecha).toFixed(1)} ${y(p.kg).toFixed(1)}`).join(' ');
+
+    // --- Trayectoria prevista: discontinua y por debajo de la real ---
+    if (proyeccion.length > 1) {
+      svg.appendChild(crear('path', {
+        d: linea(proyeccion), fill: 'none', stroke: COLOR_PREVISTO,
+        'stroke-width': 2, 'stroke-dasharray': '6 5', 'stroke-linecap': 'round',
+      }));
+    }
+
+    // --- Peso real: línea sólida + puntos con anillo del color del fondo ---
+    if (registros.length > 1) {
+      svg.appendChild(crear('path', {
+        d: linea(registros), fill: 'none', stroke: COLOR_REAL,
+        'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+      }));
+    }
+    for (const punto of registros) {
+      svg.appendChild(crear('circle', {
+        cx: x(punto.fecha), cy: y(punto.kg), r: 5,
+        fill: COLOR_REAL, stroke: SUPERFICIE, 'stroke-width': 2,
+      }));
+    }
+
+    // --- Capa de interacción: línea vertical + globo con los datos ---
+    const guia = crear('line', {
+      x1: 0, y1: margen.arriba, x2: 0, y2: margen.arriba + altoUtil,
+      stroke: '#6b585e', 'stroke-width': 1, opacity: 0,
+    });
+    svg.appendChild(guia);
+
+    const zona = crear('rect', {
+      x: margen.izquierda, y: margen.arriba,
+      width: anchoUtil, height: altoUtil, fill: 'transparent',
+    });
+    svg.appendChild(zona);
+    caja.appendChild(svg);
+
+    const globo = document.createElement('div');
+    globo.className = 'globo';
+    caja.appendChild(globo);
+
+    const masCercano = (lista, fechaObjetivo) => {
+      if (!lista.length) return null;
+      return lista.reduce((mejor, p) =>
+        Math.abs(new Date(p.fecha) - fechaObjetivo) < Math.abs(new Date(mejor.fecha) - fechaObjetivo)
+          ? p : mejor);
+    };
+
+    zona.addEventListener('mousemove', (e) => {
+      const r = svg.getBoundingClientRect();
+      const escala = ancho / r.width;
+      const px = (e.clientX - r.left) * escala;
+      const t = tMin + (px - margen.izquierda) / anchoUtil * (tMax - tMin);
+      const objetivo = new Date(t);
+
+      const real = masCercano(registros, objetivo);
+      const previsto = masCercano(proyeccion, objetivo);
+      const refe = real || previsto;
+      if (!refe) return;
+
+      guia.setAttribute('x1', x(refe.fecha));
+      guia.setAttribute('x2', x(refe.fecha));
+      guia.setAttribute('opacity', 1);
+
+      globo.innerHTML = '';
+      const cab = document.createElement('div');
+      cab.className = 'globo-fecha';
+      cab.textContent = new Date(refe.fecha).toLocaleDateString('es-ES',
+        {day: 'numeric', month: 'long', year: 'numeric'});
+      globo.appendChild(cab);
+
+      const fila = (color, etiqueta, valor) => {
+        const f = document.createElement('div');
+        f.className = 'globo-fila';
+        const punto = document.createElement('span');
+        punto.className = 'globo-punto';
+        punto.style.background = color;
+        const txt = document.createElement('span');
+        txt.textContent = `${etiqueta}: ${valor} kg`;
+        f.append(punto, txt);
+        return f;
+      };
+      if (real) globo.appendChild(fila(COLOR_REAL, 'Tu peso', real.kg.toFixed(1)));
+      if (previsto) globo.appendChild(fila(COLOR_PREVISTO, 'Previsto', previsto.kg.toFixed(1)));
+
+      globo.style.opacity = 1;
+      const izq = x(refe.fecha) / escala;
+      globo.style.left = Math.min(Math.max(izq, 70), r.width - 70) + 'px';
+    });
+
+    zona.addEventListener('mouseleave', () => {
+      guia.setAttribute('opacity', 0);
+      globo.style.opacity = 0;
+    });
+  }
+
+  // ====================================================================
+  // REGISTRO DE PESO
+  // ====================================================================
+
+  function pintarHistorial(pesos) {
+    const caja = $('historial');
+    caja.innerHTML = '';
+    // Los últimos primero: es lo que interesa mirar
+    for (const p of [...pesos].reverse().slice(0, 14)) {
+      const chip = document.createElement('div');
+      chip.className = 'peso-chip';
+      const txt = document.createElement('span');
+      const d = new Date(p.fecha);
+      txt.textContent = `${d.toLocaleDateString('es-ES', {day:'numeric', month:'short'})} · ${p.kg} kg`;
+      const borrar = document.createElement('button');
+      borrar.textContent = '×';
+      borrar.title = 'Borrar este registro';
+      borrar.addEventListener('click', async () => {
+        const r = await fetch('/api/gym/peso/' + p.fecha, {method: 'DELETE'});
+        const datos = await r.json();
+        pintarHistorial(datos.pesos);
+        recargarPlan();
+      });
+      chip.append(txt, borrar);
+      caja.appendChild(chip);
+    }
+  }
+
+  $('apuntar-peso').addEventListener('click', async () => {
+    $('error-peso').innerHTML = '';
+    const cuerpo = {fecha: $('peso-fecha').value, kg: $('peso-kg').value};
+    const r = await fetch('/api/gym/peso', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(cuerpo),
+    });
+    const datos = await r.json();
+    if (datos.error) {
+      const d = document.createElement('div');
+      d.className = 'error';
+      d.textContent = datos.error;
+      $('error-peso').appendChild(d);
+      return;
+    }
+    $('peso-kg').value = '';
+    pintarHistorial(datos.pesos);
+    recargarPlan();
+  });
+
+  async function recargarPlan() {
+    const datos = await (await fetch('/api/gym/plan')).json();
+    if (datos.hay_perfil) pintarPlan(datos.plan);
+  }
+
+  // ====================================================================
+  // RUTINA EDITABLE
+  // ====================================================================
+
+  let editando = false;
+  let catalogo = [];
+  let rutinaTrabajo = null;   // copia mientras se edita, para poder cancelar
+
+  $('editar-rutina').addEventListener('click', async () => {
+    if (!catalogo.length) catalogo = await (await fetch('/api/gym/ejercicios')).json();
+    rutinaTrabajo = JSON.parse(JSON.stringify(planActual.rutina));
+    editando = true;
+    modoEdicion(true);
+    pintarSemana(rutinaTrabajo, true);
+  });
+
+  $('cancelar-rutina').addEventListener('click', () => {
+    editando = false;
+    modoEdicion(false);
+    pintarSemana(planActual.rutina, false);
+  });
+
+  $('guardar-rutina').addEventListener('click', async () => {
+    const r = await fetch('/api/gym/rutina', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({rutina: rutinaTrabajo}),
+    });
+    const datos = await r.json();
+    editando = false;
+    modoEdicion(false);
+    if (datos.plan) pintarPlan(datos.plan);
+  });
+
+  // "Que la haga JOKER": tira lo editado y vuelve a la rutina calculada
+  $('que-lo-haga').addEventListener('click', async () => {
+    const r = await fetch('/api/gym/rutina', {method: 'DELETE'});
+    const datos = await r.json();
+    editando = false;
+    modoEdicion(false);
+    if (datos.plan) pintarPlan(datos.plan);
+  });
+
+  function modoEdicion(activo) {
+    $('editar-rutina').classList.toggle('oculto', activo);
+    $('guardar-rutina').classList.toggle('oculto', !activo);
+    $('cancelar-rutina').classList.toggle('oculto', !activo);
+    // El botón de "que la haga JOKER" solo tiene sentido si hay algo que tirar
+    const hayPropia = planActual && planActual.rutina_personalizada;
+    $('que-lo-haga').classList.toggle('oculto', !(activo || hayPropia));
+  }
+
+  function selectorEjercicio(valorActual, alCambiar) {
+    const sel = document.createElement('select');
+    // Agrupamos por músculo para que se encuentre rápido
+    const porGrupo = {};
+    for (const e of catalogo) (porGrupo[e.grupo] ||= []).push(e);
+
+    for (const [grupo, lista] of Object.entries(porGrupo)) {
+      const og = document.createElement('optgroup');
+      og.label = grupo.charAt(0).toUpperCase() + grupo.slice(1);
+      for (const e of lista) {
+        const op = document.createElement('option');
+        op.value = e.nombre;
+        // Avisamos en el propio desplegable si choca con sus limitaciones
+        op.textContent = e.desaconsejado.length
+          ? `${e.nombre}  ⚠ ${e.desaconsejado.join(', ')}`
+          : e.nombre;
+        if (e.nombre === valorActual) op.selected = true;
+        og.appendChild(op);
+      }
+      sel.appendChild(og);
+    }
+    // Si lo que había no está en el catálogo (ej. el cardio añadido), lo conservamos
+    if (valorActual && !catalogo.some(e => e.nombre === valorActual)) {
+      const op = document.createElement('option');
+      op.value = valorActual;
+      op.textContent = valorActual;
+      op.selected = true;
+      sel.insertBefore(op, sel.firstChild);
+    }
+    sel.addEventListener('change', () => alCambiar(sel.value));
+    return sel;
+  }
+
+  // ====================================================================
+  // LIMITACIONES EN LENGUAJE NORMAL
+  // ====================================================================
+
+  $('interpretar').addEventListener('click', async () => {
+    const texto = $('texto-limitaciones').value.trim();
+    const caja = $('resultado-limitaciones');
+    caja.innerHTML = '';
+    if (!texto) return;
+
+    const r = await fetch('/api/gym/limitaciones', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({texto}),
+    });
+    const datos = await r.json();
+
+    const aviso = document.createElement('div');
+    aviso.style.cssText = 'margin-top:12px;font-size:0.85rem;line-height:1.6';
+
+    if (!datos.limitaciones.length) {
+      aviso.style.color = 'var(--texto-suave)';
+      aviso.textContent = 'No he detectado ninguna limitación en lo que has escrito. '
+                        + 'Si tienes alguna, márcala a mano arriba.';
+    } else {
+      // Marcamos las casillas correspondientes
+      document.querySelectorAll('#limitaciones input').forEach(c => {
+        if (datos.limitaciones.includes(c.value)) c.checked = true;
+      });
+      aviso.style.color = 'var(--burdeos-claro)';
+      const nombres = datos.limitaciones.map(l => datos.nombres[l]);
+      aviso.textContent = 'He marcado: ' + nombres.join(', ')
+                        + '. Revísalo arriba por si me he pasado o me falta algo.';
+    }
+    caja.appendChild(aviso);
+  });
 
   async function arrancar() {
     opciones = await (await fetch('/api/gym/opciones')).json();
@@ -438,7 +944,106 @@
     return div;
   }
 
+  // Pinta los 7 días. En modo edición, cada ejercicio es un desplegable y
+  // se pueden quitar o añadir; fuera de edición es solo lectura.
+  function pintarSemana(rutina, editable) {
+    const semana = $('semana');
+    semana.innerHTML = '';
+
+    rutina.forEach((dia, indiceDia) => {
+      const div = document.createElement('div');
+      div.className = 'dia' + (dia.descanso && !editable ? ' libre' : '')
+                    + (editable ? ' editando' : '');
+
+      const h = document.createElement('h3');
+      h.textContent = dia.dia;
+      const tipo = document.createElement('div');
+      tipo.className = 'tipo';
+      tipo.textContent = dia.titulo;
+      div.append(h, tipo);
+
+      if (!dia.descanso) {
+        const pauta = document.createElement('div');
+        pauta.className = 'pauta';
+        pauta.textContent = `${dia.series} series · ${dia.reps} reps · descanso ${dia.tiempo_descanso}`;
+        div.appendChild(pauta);
+      }
+
+      const ul = document.createElement('ul');
+      (dia.ejercicios || []).forEach((ej, indiceEj) => {
+        const li = document.createElement('li');
+
+        if (editable) {
+          li.className = 'editable';
+          li.appendChild(selectorEjercicio(ej.nombre, (nuevoNombre) => {
+            const ficha = catalogo.find(c => c.nombre === nuevoNombre);
+            rutinaTrabajo[indiceDia].ejercicios[indiceEj] = {
+              nombre: nuevoNombre,
+              grupo: ficha ? ficha.grupo : ej.grupo,
+              alternativa: ficha ? ficha.alternativa : null,
+              sustituye_a: null,   // si lo eliges tú, ya no es una sustitución mía
+            };
+          }));
+          const quitar = document.createElement('button');
+          quitar.className = 'quitar';
+          quitar.textContent = '×';
+          quitar.title = 'Quitar este ejercicio';
+          quitar.addEventListener('click', () => {
+            rutinaTrabajo[indiceDia].ejercicios.splice(indiceEj, 1);
+            pintarSemana(rutinaTrabajo, true);
+          });
+          li.appendChild(quitar);
+        } else {
+          li.textContent = ej.nombre;
+          if (ej.sustituye_a) {
+            const s = document.createElement('span');
+            s.className = 'alt cambiado';
+            s.textContent = `↳ en lugar de ${ej.sustituye_a}, por tus limitaciones`;
+            li.appendChild(s);
+          } else if (ej.alternativa) {
+            const s = document.createElement('span');
+            s.className = 'alt';
+            s.textContent = `↳ alternativa: ${ej.alternativa}`;
+            li.appendChild(s);
+          }
+        }
+        ul.appendChild(li);
+      });
+      div.appendChild(ul);
+
+      if (editable) {
+        const anadir = document.createElement('button');
+        anadir.className = 'anadir';
+        anadir.textContent = dia.descanso ? '+ Convertir en día de entreno' : '+ Añadir ejercicio';
+        anadir.addEventListener('click', () => {
+          const d = rutinaTrabajo[indiceDia];
+          if (d.descanso) {
+            // Un día de descanso pasa a ser de entreno: le damos la pauta
+            // del objetivo actual, tomándola de cualquier día que ya entrene
+            const modelo = rutinaTrabajo.find(x => !x.descanso) || {};
+            d.descanso = false;
+            d.titulo = 'Sesión propia';
+            d.series = modelo.series || 3;
+            d.reps = modelo.reps || '8-12';
+            d.tiempo_descanso = modelo.tiempo_descanso || '90 s';
+            d.ejercicios = [];
+          }
+          const primero = catalogo[0];
+          d.ejercicios.push({
+            nombre: primero.nombre, grupo: primero.grupo,
+            alternativa: primero.alternativa, sustituye_a: null,
+          });
+          pintarSemana(rutinaTrabajo, true);
+        });
+        div.appendChild(anadir);
+      }
+
+      semana.appendChild(div);
+    });
+  }
+
   function pintarPlan(plan) {
+    planActual = plan;
     const m = plan.metricas, n = plan.nutricion, p = plan.plazo;
 
     // --- Números ---
@@ -478,47 +1083,7 @@
       meta.appendChild(t);
     }
 
-    // --- Semana ---
-    const semana = $('semana');
-    semana.innerHTML = '';
-    for (const dia of plan.rutina) {
-      const div = document.createElement('div');
-      div.className = 'dia' + (dia.descanso ? ' libre' : '');
-
-      const h = document.createElement('h3');
-      h.textContent = dia.dia;
-      const tipo = document.createElement('div');
-      tipo.className = 'tipo';
-      tipo.textContent = dia.titulo;
-      div.append(h, tipo);
-
-      if (!dia.descanso) {
-        const pauta = document.createElement('div');
-        pauta.className = 'pauta';
-        pauta.textContent = `${dia.series} series · ${dia.reps} reps · descanso ${dia.tiempo_descanso}`;
-        div.appendChild(pauta);
-
-        const ul = document.createElement('ul');
-        for (const ej of dia.ejercicios) {
-          const li = document.createElement('li');
-          li.textContent = ej.nombre;
-          if (ej.sustituye_a) {
-            const s = document.createElement('span');
-            s.className = 'alt cambiado';
-            s.textContent = `↳ en lugar de ${ej.sustituye_a}, por tus limitaciones`;
-            li.appendChild(s);
-          } else if (ej.alternativa) {
-            const s = document.createElement('span');
-            s.className = 'alt';
-            s.textContent = `↳ alternativa: ${ej.alternativa}`;
-            li.appendChild(s);
-          }
-          ul.appendChild(li);
-        }
-        div.appendChild(ul);
-      }
-      semana.appendChild(div);
-    }
+    pintarSemana(plan.rutina, false);
 
     // --- Menú ---
     const comidas = $('comidas');
@@ -569,6 +1134,48 @@
       texto.textContent = c.texto;
       div.append(clase, texto);
       cons.appendChild(div);
+    }
+
+    // --- Ojo con estos ejercicios ---
+    const evitar = $('evitar');
+    evitar.innerHTML = '';
+    if (!plan.evitar || !plan.evitar.length) {
+      $('seccion-evitar').classList.add('oculto');
+    } else {
+      $('seccion-evitar').classList.remove('oculto');
+      for (const e of plan.evitar) {
+        const div = document.createElement('div');
+        div.className = 'evitar-item';
+        const cual = document.createElement('div');
+        cual.className = 'cual';
+        cual.textContent = e.ejercicio;
+        const porque = document.createElement('div');
+        porque.className = 'porque';
+        porque.textContent = e.por.join(' · ');
+        const cambio = document.createElement('div');
+        cambio.className = 'cambio';
+        cambio.textContent = `Cambia por: ${e.cambiar_por}`;
+        div.append(cual, porque, cambio);
+        evitar.appendChild(div);
+      }
+    }
+
+    // --- Gráfica de peso ---
+    dibujarGrafica(plan.grafica);
+    pintarHistorial(plan.grafica.registros || []);
+    if (!$('peso-fecha').value) {
+      $('peso-fecha').value = new Date().toISOString().slice(0, 10);
+    }
+
+    // --- Avisar si la rutina es suya y no la calculada ---
+    modoEdicion(editando);
+    const tituloSemana = $('semana').previousElementSibling;
+    document.querySelectorAll('.marca-propia').forEach(m => m.remove());
+    if (plan.rutina_personalizada) {
+      const marca = document.createElement('span');
+      marca.className = 'marca-propia';
+      marca.textContent = 'rutina tuya';
+      $('editar-rutina').insertAdjacentElement('afterend', marca);
     }
 
     $('aviso').textContent = plan.aviso;

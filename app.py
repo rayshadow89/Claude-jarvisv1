@@ -212,7 +212,112 @@ def gym_guardar_perfil():
 @app.post("/api/gym/borrar")
 def gym_borrar():
     gym.borrar_perfil()
+    gym.borrar_rutina_personalizada()
     return jsonify({"ok": True})
+
+
+# --- Registro de peso (la gráfica) ---
+
+@app.post("/api/gym/peso")
+def gym_registrar_peso():
+    datos = request.get_json(silent=True) or {}
+    fecha = (datos.get("fecha") or "").strip()
+    try:
+        kg = float(datos.get("kg"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "El peso tiene que ser un número."}), 400
+
+    if not (25 <= kg <= 300):
+        return jsonify({"error": "El peso debe estar entre 25 y 300 kg."}), 400
+
+    # La fecha tiene que ser una fecha de verdad, en formato AAAA-MM-DD
+    from datetime import date
+    try:
+        date.fromisoformat(fecha)
+    except ValueError:
+        return jsonify({"error": "La fecha no es válida."}), 400
+
+    gym.registrar_peso(fecha, kg)
+    return jsonify({"ok": True, "pesos": gym.leer_pesos()})
+
+
+@app.delete("/api/gym/peso/<fecha>")
+def gym_borrar_peso(fecha):
+    gym.borrar_peso(fecha)
+    return jsonify({"ok": True, "pesos": gym.leer_pesos()})
+
+
+# --- Rutina editable ---
+
+@app.post("/api/gym/rutina")
+def gym_guardar_rutina():
+    """Guarda la rutina que el usuario ha editado a mano."""
+    datos = request.get_json(silent=True) or {}
+    rutina = datos.get("rutina")
+
+    if not isinstance(rutina, list) or len(rutina) != 7:
+        return jsonify({"error": "La rutina debe tener los 7 días de la semana."}), 400
+
+    # Limpiamos lo que llega: solo nos quedamos con lo que esperamos, para que
+    # nadie pueda colar campos raros en la base de datos.
+    limpia = []
+    for dia in rutina:
+        if not isinstance(dia, dict):
+            return jsonify({"error": "Formato de rutina incorrecto."}), 400
+        ejercicios = [
+            {"nombre": str(e.get("nombre", ""))[:120], "grupo": str(e.get("grupo", ""))[:30],
+             "alternativa": (str(e["alternativa"])[:120] if e.get("alternativa") else None),
+             "sustituye_a": (str(e["sustituye_a"])[:120] if e.get("sustituye_a") else None)}
+            for e in (dia.get("ejercicios") or []) if isinstance(e, dict)
+            and str(e.get("nombre", "")).strip()
+        ]
+        limpia.append({
+            "dia": str(dia.get("dia", ""))[:20],
+            "descanso": bool(dia.get("descanso")) or not ejercicios,
+            "titulo": str(dia.get("titulo", "Descanso"))[:80],
+            "series": dia.get("series"),
+            "reps": dia.get("reps"),
+            "tiempo_descanso": dia.get("tiempo_descanso"),
+            "ejercicios": ejercicios,
+        })
+
+    gym.guardar_rutina_personalizada(limpia)
+    perfil = gym.leer_perfil()
+    return jsonify({"ok": True, "plan": gym.plan_completo(perfil) if perfil else None})
+
+
+@app.delete("/api/gym/rutina")
+def gym_restaurar_rutina():
+    """Tira la rutina editada y vuelve a la que calcula JOKER."""
+    gym.borrar_rutina_personalizada()
+    perfil = gym.leer_perfil()
+    return jsonify({"ok": True, "plan": gym.plan_completo(perfil) if perfil else None})
+
+
+@app.get("/api/gym/ejercicios")
+def gym_catalogo():
+    """El catálogo completo, para el desplegable al editar la rutina."""
+    limitaciones = gym.leer_perfil().get("limitaciones", []) if gym.leer_perfil() else []
+    return jsonify([
+        {
+            "nombre": e["nombre"],
+            "grupo": e["grupo"],
+            "casa": e["casa"],
+            "alternativa": e["alt"],
+            "desaconsejado": [gym.LIMITACIONES[l] for l in limitaciones if l in e["evitar"]],
+        }
+        for e in gym.EJERCICIOS
+    ])
+
+
+# --- Limitaciones escritas a mano ---
+
+@app.post("/api/gym/limitaciones")
+def gym_interpretar_limitaciones():
+    """Convierte 'me duele la rodilla' en las limitaciones del sistema."""
+    datos = request.get_json(silent=True) or {}
+    texto = str(datos.get("texto", ""))[:500]
+    return jsonify(gym.interpretar_limitaciones(texto))
 
 
 @app.post("/api/nueva")
