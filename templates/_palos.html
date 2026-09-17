@@ -1,0 +1,113 @@
+{#
+  Los carruseles de palos de la baraja, compartidos por todas las páginas.
+
+  Estaban metidos dentro de index.html, así que solo se veían en el chat. Al
+  sacarlos aquí, cualquier página de JOKER los tiene escribiendo una línea:
+      {% include '_palos.html' %}
+  justo después de <body>.
+
+  La página anfitriona solo tiene que definir la variable --burdeos-vivo (todas
+  la tienen: es el burdeos de la casa).
+#}
+<style>
+  /* ---------- Carruseles de palos en los laterales ---------- */
+  /*
+    Dos columnas fijas, una a cada lado. Cada una contiene la lista de palos
+    DUPLICADA: al desplazar exactamente la mitad de su altura, el final
+    coincide con el principio, así que el bucle se ve continuo y sin saltos.
+    La izquierda baja y la derecha sube.
+  */
+  .palos {
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    width: 78px;
+    overflow: hidden;
+    pointer-events: none;   /* decorativo: nunca estorba al ratón */
+    z-index: 0;
+    /* Difuminado arriba y abajo para que los palos aparezcan y
+       desaparezcan en vez de cortarse de golpe */
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+            mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+  }
+  .palos.izquierda { left: 0; }
+  .palos.derecha   { right: 0; }
+
+  .palos-pista {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 46px;
+    padding: 24px 0;
+  }
+  .palos.izquierda .palos-pista { animation: bajar 42s linear infinite; }
+  .palos.derecha   .palos-pista { animation: subir 42s linear infinite; }
+
+  .palo {
+    font-size: 30px;
+    line-height: 1;
+    user-select: none;
+  }
+  /* Picas y tréboles: en gris muy tenue, como la tinta negra de una carta */
+  .palo.negro { color: #8a757c; opacity: 0.42; }
+  /* Corazones y diamantes: en burdeos, a juego con la web */
+  .palo.rojo  { color: var(--burdeos-vivo); opacity: 0.5; }
+
+  /* Recorre media pista: como la lista está duplicada, el salto es invisible */
+  @keyframes subir {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-50%); }
+  }
+  @keyframes bajar {
+    from { transform: translateY(-50%); }
+    to   { transform: translateY(0); }
+  }
+
+  /* Respeta a quien tenga desactivadas las animaciones en su sistema */
+  @media (prefers-reduced-motion: reduce) {
+    .palos-pista { animation: none; }
+  }
+
+  /* En pantallas estrechas no hay sitio: se ocultan para no molestar */
+  @media (max-width: 1080px) {
+    .palos { display: none; }
+  }
+</style>
+
+<!-- Carruseles decorativos de palos de la baraja: bajan por la izquierda
+     y suben por la derecha, como las cartas de un mazo al barajarse -->
+<div class="palos izquierda" aria-hidden="true"><div class="palos-pista" id="palos-izq"></div></div>
+<div class="palos derecha"   aria-hidden="true"><div class="palos-pista" id="palos-der"></div></div>
+
+<script>
+  // Generamos los símbolos por JavaScript en vez de escribirlos a mano en el
+  // HTML: son decenas de elementos repetidos y así el HTML queda limpio.
+  (function montarPalos() {
+    const PALOS = [
+      { simbolo: '♠', clase: 'negro' },  // pica
+      { simbolo: '♥', clase: 'rojo'  },  // corazon
+      { simbolo: '♦', clase: 'rojo'  },  // diamante
+      { simbolo: '♣', clase: 'negro' },  // trebol
+    ];
+    const REPETICIONES = 10;  // suficientes para cubrir pantallas altas
+
+    document.querySelectorAll('.palos-pista').forEach((pista, indice) => {
+      const grupo = document.createDocumentFragment();
+
+      for (let v = 0; v < REPETICIONES; v++) {
+        PALOS.forEach((palo, i) => {
+          const span = document.createElement('span');
+          span.className = 'palo ' + palo.clase;
+          span.textContent = palo.simbolo;
+          // Desfase distinto en cada lado para que no vayan sincronizados
+          if ((v + i + indice) % 2 === 0) span.style.transform = 'scale(0.78)';
+          grupo.appendChild(span);
+        });
+      }
+
+      // La pista se duplica: al desplazar el 50% el bucle encaja sin salto.
+      pista.appendChild(grupo.cloneNode(true));
+      pista.appendChild(grupo);
+    });
+  })();
+</script>

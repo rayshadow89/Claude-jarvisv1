@@ -22,6 +22,7 @@ médico. Si tienes alguna condición de salud, habla con un profesional.
 
 from __future__ import annotations
 
+from collections import Counter
 import json
 import sqlite3
 import unicodedata
@@ -68,6 +69,13 @@ def leer_perfil() -> dict | None:
 def borrar_perfil() -> None:
     with _conexion() as con:
         con.execute("DELETE FROM perfil_gym WHERE id = 1")
+
+
+def borrar_completados() -> None:
+    """Olvida los días marcados como hechos (se usa al empezar de cero)."""
+    with _conexion() as con:
+        _tabla_completados(con)
+        con.execute("DELETE FROM dias_hechos")
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +139,35 @@ LIMITACIONES = {
 # ---------------------------------------------------------------------------
 # Catálogo de ejercicios
 # ---------------------------------------------------------------------------
+# Grupos musculares, ahora separados de verdad (antes "brazo" lo mezclaba todo).
+GRUPOS = {
+    "pecho":      "Pecho",
+    "espalda":    "Espalda",
+    "hombro":     "Hombro",
+    "biceps":     "Bíceps",
+    "triceps":    "Tríceps",
+    "antebrazo":  "Antebrazo",
+    "cuadriceps": "Cuádriceps",
+    "femoral":    "Femoral e isquios",
+    "gluteo":     "Glúteo",
+    "gemelo":     "Gemelo",
+    "core":       "Abdomen y core",
+    "cardio":     "Cardio",
+}
+
+# Los mismos grupos, pero con el nombre corto: es el que se usa para titular
+# los días ("Pecho, hombro y tríceps" se lee mejor que "Femoral e isquios").
+GRUPOS_CORTO = {
+    "pecho": "pecho", "espalda": "espalda", "hombro": "hombro",
+    "biceps": "bíceps", "triceps": "tríceps", "antebrazo": "antebrazo",
+    "cuadriceps": "cuádriceps", "femoral": "femoral", "gluteo": "glúteo",
+    "gemelo": "gemelo", "core": "abdomen", "cardio": "cardio",
+}
+
+# Para saber si una sesión es de tren superior, inferior o de todo el cuerpo.
+GRUPOS_SUPERIOR = {"pecho", "espalda", "hombro", "biceps", "triceps", "antebrazo"}
+GRUPOS_INFERIOR = {"cuadriceps", "femoral", "gluteo", "gemelo"}
+
 # Cada ejercicio lleva:
 #   grupo    -> qué músculo trabaja
 #   tipo     -> compuesto (varias articulaciones) o aislamiento
@@ -139,142 +176,265 @@ LIMITACIONES = {
 #   alt      -> con qué sustituirlo si toca evitarlo
 
 EJERCICIOS = [
-    # --- Pecho ---
+    # ===================== PECHO =====================
     {"nombre": "Press de banca con barra", "grupo": "pecho", "tipo": "compuesto",
      "casa": False, "evitar": ["hombro", "muneca", "sin_material"],
-     "alt": "Press de banca con mancuernas (agarre neutro)"},
+     "alt": "Press de banca con mancuernas"},
     {"nombre": "Press de banca con mancuernas", "grupo": "pecho", "tipo": "compuesto",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Flexiones"},
+     "casa": False, "evitar": ["sin_material"], "alt": "Flexiones"},
+    {"nombre": "Press inclinado con barra", "grupo": "pecho", "tipo": "compuesto",
+     "casa": False, "evitar": ["hombro", "muneca", "sin_material"],
+     "alt": "Press inclinado con mancuernas"},
     {"nombre": "Press inclinado con mancuernas", "grupo": "pecho", "tipo": "compuesto",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Flexiones con los pies elevados"},
+     "casa": False, "evitar": ["sin_material"], "alt": "Flexiones con los pies elevados"},
+    {"nombre": "Press declinado con mancuernas", "grupo": "pecho", "tipo": "compuesto",
+     "casa": False, "evitar": ["sin_material"], "alt": "Fondos en banco"},
+    {"nombre": "Press en máquina (pecho)", "grupo": "pecho", "tipo": "compuesto",
+     "casa": False, "evitar": ["sin_material"], "alt": "Press de banca con mancuernas"},
     {"nombre": "Flexiones", "grupo": "pecho", "tipo": "compuesto",
-     "casa": True, "evitar": ["muneca"],
-     "alt": "Flexiones sobre los puños o con mancuernas"},
+     "casa": True, "evitar": ["muneca"], "alt": "Flexiones sobre los puños"},
+    {"nombre": "Flexiones sobre los puños", "grupo": "pecho", "tipo": "compuesto",
+     "casa": True, "evitar": [], "alt": "Flexiones con apoyo en rodillas"},
+    {"nombre": "Flexiones con los pies elevados", "grupo": "pecho", "tipo": "compuesto",
+     "casa": True, "evitar": ["muneca"], "alt": "Flexiones"},
+    {"nombre": "Flexiones con apoyo en rodillas", "grupo": "pecho", "tipo": "compuesto",
+     "casa": True, "evitar": ["muneca"], "alt": "Flexiones contra la pared"},
     {"nombre": "Aperturas con mancuernas", "grupo": "pecho", "tipo": "aislamiento",
-     "casa": False, "evitar": ["hombro", "sin_material"],
-     "alt": "Cruces en polea a la altura del pecho"},
+     "casa": False, "evitar": ["hombro", "sin_material"], "alt": "Cruces en polea"},
+    {"nombre": "Cruces en polea", "grupo": "pecho", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Aperturas con goma elástica"},
+    {"nombre": "Aperturas con goma elástica", "grupo": "pecho", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Flexiones"},
     {"nombre": "Fondos en paralelas", "grupo": "pecho", "tipo": "compuesto",
-     "casa": False, "evitar": ["hombro", "sin_material"],
-     "alt": "Fondos en banco con recorrido corto"},
+     "casa": False, "evitar": ["hombro", "sin_material"], "alt": "Fondos en banco"},
+    {"nombre": "Pullover con mancuerna", "grupo": "pecho", "tipo": "aislamiento",
+     "casa": False, "evitar": ["hombro", "sin_material"], "alt": "Pullover en polea"},
+    {"nombre": "Flexiones contra la pared", "grupo": "pecho", "tipo": "compuesto",
+     "casa": True, "evitar": [], "alt": "Flexiones con apoyo en rodillas"},
 
-    # --- Espalda ---
+    # ===================== ESPALDA =====================
     {"nombre": "Dominadas", "grupo": "espalda", "tipo": "compuesto",
-     "casa": True, "evitar": ["hombro"],
-     "alt": "Jalón al pecho con agarre neutro"},
+     "casa": True, "evitar": ["hombro"], "alt": "Jalón con agarre neutro"},
+    {"nombre": "Dominadas supinas", "grupo": "espalda", "tipo": "compuesto",
+     "casa": True, "evitar": ["hombro", "muneca"], "alt": "Jalón supino"},
+    {"nombre": "Dominadas asistidas con goma", "grupo": "espalda", "tipo": "compuesto",
+     "casa": True, "evitar": ["hombro"], "alt": "Remo con goma elástica"},
     {"nombre": "Jalón al pecho", "grupo": "espalda", "tipo": "compuesto",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Dominadas asistidas con goma"},
+     "casa": False, "evitar": ["sin_material"], "alt": "Dominadas asistidas con goma"},
+    {"nombre": "Jalón con agarre neutro", "grupo": "espalda", "tipo": "compuesto",
+     "casa": False, "evitar": ["sin_material"], "alt": "Remo con goma elástica"},
     {"nombre": "Remo con barra", "grupo": "espalda", "tipo": "compuesto",
-     "casa": False, "evitar": ["espalda", "sin_material"],
-     "alt": "Remo con apoyo en banco (sin carga lumbar)"},
+     "casa": False, "evitar": ["espalda", "sin_material"], "alt": "Remo con apoyo en banco"},
     {"nombre": "Remo con apoyo en banco", "grupo": "espalda", "tipo": "compuesto",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Remo con goma elástica sentado"},
+     "casa": False, "evitar": ["sin_material"], "alt": "Remo con goma elástica"},
     {"nombre": "Remo con mancuerna a una mano", "grupo": "espalda", "tipo": "compuesto",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Remo con goma elástica"},
+     "casa": False, "evitar": ["sin_material"], "alt": "Remo con goma elástica"},
+    {"nombre": "Remo en máquina sentado", "grupo": "espalda", "tipo": "compuesto",
+     "casa": False, "evitar": ["sin_material"], "alt": "Remo con goma elástica"},
     {"nombre": "Remo con goma elástica", "grupo": "espalda", "tipo": "compuesto",
-     "casa": True, "evitar": [],
-     "alt": "Remo invertido bajo una mesa"},
-    {"nombre": "Face pull", "grupo": "espalda", "tipo": "aislamiento",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Face pull con goma elástica"},
-
-    # --- Pierna ---
-    {"nombre": "Sentadilla con barra", "grupo": "pierna", "tipo": "compuesto",
-     "casa": False, "evitar": ["rodilla", "espalda", "sin_material"],
-     "alt": "Prensa de piernas con recorrido parcial"},
-    {"nombre": "Prensa de piernas", "grupo": "pierna", "tipo": "compuesto",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Sentadilla búlgara con peso corporal"},
-    {"nombre": "Peso muerto rumano", "grupo": "pierna", "tipo": "compuesto",
-     "casa": False, "evitar": ["espalda", "sin_material"],
-     "alt": "Curl femoral tumbado"},
-    {"nombre": "Curl femoral", "grupo": "pierna", "tipo": "aislamiento",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Puente de glúteo a una pierna"},
-    {"nombre": "Extensión de cuádriceps", "grupo": "pierna", "tipo": "aislamiento",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Sentadilla isométrica contra la pared"},
-    {"nombre": "Sentadilla búlgara", "grupo": "pierna", "tipo": "compuesto",
-     "casa": True, "evitar": ["rodilla"],
-     "alt": "Hip thrust (empuje de cadera)"},
-    {"nombre": "Hip thrust", "grupo": "pierna", "tipo": "compuesto",
-     "casa": True, "evitar": [],
-     "alt": "Puente de glúteo en el suelo"},
-    {"nombre": "Sentadilla con peso corporal", "grupo": "pierna", "tipo": "compuesto",
-     "casa": True, "evitar": ["rodilla"],
-     "alt": "Hip thrust (empuje de cadera)"},
-    {"nombre": "Zancadas", "grupo": "pierna", "tipo": "compuesto",
-     "casa": True, "evitar": ["rodilla"],
+     "casa": True, "evitar": [], "alt": "Remo invertido"},
+    {"nombre": "Remo invertido", "grupo": "espalda", "tipo": "compuesto",
+     "casa": True, "evitar": ["hombro"], "alt": "Remo con goma elástica"},
+    {"nombre": "Peso muerto convencional", "grupo": "espalda", "tipo": "compuesto",
+     "casa": False, "evitar": ["espalda", "muneca", "sin_material"],
      "alt": "Peso muerto rumano con mancuernas"},
-    {"nombre": "Elevación de gemelos", "grupo": "pierna", "tipo": "aislamiento",
-     "casa": True, "evitar": [],
-     "alt": "Elevación de gemelos a una pierna"},
+    {"nombre": "Face pull", "grupo": "espalda", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Face pull con goma elástica"},
+    {"nombre": "Face pull con goma elástica", "grupo": "espalda", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Pájaros con botellas"},
+    {"nombre": "Encogimientos de trapecio", "grupo": "espalda", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Encogimientos con goma"},
+    {"nombre": "Encogimientos con goma", "grupo": "espalda", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Superman en el suelo"},
+    {"nombre": "Superman en el suelo", "grupo": "espalda", "tipo": "aislamiento",
+     "casa": True, "evitar": ["espalda"], "alt": "Bird dog"},
+    {"nombre": "Pullover en polea", "grupo": "espalda", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Pullover con goma elástica"},
+    {"nombre": "Pullover con goma elástica", "grupo": "espalda", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Superman en el suelo"},
+    {"nombre": "Jalón supino", "grupo": "espalda", "tipo": "compuesto",
+     "casa": False, "evitar": ["sin_material"], "alt": "Dominadas asistidas con goma"},
 
-    # --- Hombro ---
+    # ===================== HOMBRO =====================
     {"nombre": "Press militar con barra", "grupo": "hombro", "tipo": "compuesto",
      "casa": False, "evitar": ["hombro", "espalda", "muneca", "sin_material"],
-     "alt": "Press de hombro con mancuernas (agarre neutro)"},
+     "alt": "Press de hombro con mancuernas"},
     {"nombre": "Press de hombro con mancuernas", "grupo": "hombro", "tipo": "compuesto",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Press de hombro con gomas"},
+     "casa": False, "evitar": ["sin_material"], "alt": "Press de hombro con gomas"},
+    {"nombre": "Press Arnold", "grupo": "hombro", "tipo": "compuesto",
+     "casa": False, "evitar": ["hombro", "sin_material"], "alt": "Press de hombro con mancuernas"},
+    {"nombre": "Press de hombro con gomas", "grupo": "hombro", "tipo": "compuesto",
+     "casa": True, "evitar": [], "alt": "Flexiones en pica"},
+    {"nombre": "Flexiones en pica", "grupo": "hombro", "tipo": "compuesto",
+     "casa": True, "evitar": ["hombro", "muneca"], "alt": "Press de hombro con gomas"},
     {"nombre": "Elevaciones laterales", "grupo": "hombro", "tipo": "aislamiento",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Elevaciones laterales con goma elástica"},
+     "casa": False, "evitar": ["sin_material"], "alt": "Elevaciones laterales con goma"},
     {"nombre": "Elevaciones laterales con goma", "grupo": "hombro", "tipo": "aislamiento",
-     "casa": True, "evitar": [],
-     "alt": "Elevaciones frontales con una botella de agua"},
+     "casa": True, "evitar": [], "alt": "Elevaciones laterales con botellas"},
+    {"nombre": "Elevaciones frontales", "grupo": "hombro", "tipo": "aislamiento",
+     "casa": False, "evitar": ["hombro", "sin_material"], "alt": "Elevaciones frontales con goma"},
+    {"nombre": "Elevaciones frontales con goma", "grupo": "hombro", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Elevaciones laterales con goma"},
     {"nombre": "Pájaros (deltoides posterior)", "grupo": "hombro", "tipo": "aislamiento",
-     "casa": True, "evitar": [],
-     "alt": "Face pull con goma elástica"},
+     "casa": True, "evitar": [], "alt": "Face pull con goma elástica"},
+    {"nombre": "Rotación externa con goma", "grupo": "hombro", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Face pull con goma elástica"},
+    {"nombre": "Elevaciones laterales con botellas", "grupo": "hombro", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Elevaciones laterales con goma"},
+    {"nombre": "Pájaros con botellas", "grupo": "hombro", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Pájaros (deltoides posterior)"},
 
-    # --- Brazo ---
-    {"nombre": "Curl de bíceps con barra", "grupo": "brazo", "tipo": "aislamiento",
-     "casa": False, "evitar": ["muneca", "sin_material"],
-     "alt": "Curl martillo con mancuernas"},
-    {"nombre": "Curl martillo", "grupo": "brazo", "tipo": "aislamiento",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Curl con goma elástica"},
-    {"nombre": "Curl con goma elástica", "grupo": "brazo", "tipo": "aislamiento",
-     "casa": True, "evitar": [],
-     "alt": "Curl con mochila cargada"},
-    {"nombre": "Extensión de tríceps en polea", "grupo": "brazo", "tipo": "aislamiento",
-     "casa": False, "evitar": ["sin_material"],
-     "alt": "Fondos en banco"},
-    {"nombre": "Fondos en banco", "grupo": "brazo", "tipo": "compuesto",
-     "casa": True, "evitar": ["hombro"],
-     "alt": "Flexiones diamante"},
-    {"nombre": "Flexiones diamante", "grupo": "brazo", "tipo": "compuesto",
-     "casa": True, "evitar": ["muneca"],
-     "alt": "Extensión de tríceps con goma elástica"},
+    # ===================== BÍCEPS =====================
+    {"nombre": "Curl de bíceps con barra", "grupo": "biceps", "tipo": "aislamiento",
+     "casa": False, "evitar": ["muneca", "sin_material"], "alt": "Curl martillo"},
+    {"nombre": "Curl con mancuernas", "grupo": "biceps", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Curl con goma elástica"},
+    {"nombre": "Curl martillo", "grupo": "biceps", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Curl martillo con goma"},
+    {"nombre": "Curl concentrado", "grupo": "biceps", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Curl con goma elástica"},
+    {"nombre": "Curl predicador", "grupo": "biceps", "tipo": "aislamiento",
+     "casa": False, "evitar": ["muneca", "sin_material"], "alt": "Curl con mancuernas"},
+    {"nombre": "Curl con goma elástica", "grupo": "biceps", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Curl con mochila cargada"},
+    {"nombre": "Curl martillo con goma", "grupo": "biceps", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Curl con mochila cargada"},
+    {"nombre": "Curl con mochila cargada", "grupo": "biceps", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Dominadas supinas"},
 
-    # --- Core ---
+    # ===================== TRÍCEPS =====================
+    {"nombre": "Extensión de tríceps en polea", "grupo": "triceps", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Extensión de tríceps con goma"},
+    {"nombre": "Press francés", "grupo": "triceps", "tipo": "aislamiento",
+     "casa": False, "evitar": ["muneca", "sin_material"], "alt": "Extensión de tríceps con goma"},
+    {"nombre": "Patada de tríceps", "grupo": "triceps", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Extensión de tríceps con goma"},
+    {"nombre": "Press cerrado", "grupo": "triceps", "tipo": "compuesto",
+     "casa": False, "evitar": ["muneca", "sin_material"], "alt": "Flexiones diamante"},
+    {"nombre": "Extensión de tríceps con goma", "grupo": "triceps", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Fondos en banco"},
+    {"nombre": "Fondos en banco", "grupo": "triceps", "tipo": "compuesto",
+     "casa": True, "evitar": ["hombro"], "alt": "Flexiones diamante"},
+    {"nombre": "Flexiones diamante", "grupo": "triceps", "tipo": "compuesto",
+     "casa": True, "evitar": ["muneca"], "alt": "Extensión de tríceps con goma"},
+
+    # ===================== ANTEBRAZO =====================
+    {"nombre": "Curl de muñeca", "grupo": "antebrazo", "tipo": "aislamiento",
+     "casa": False, "evitar": ["muneca", "sin_material"], "alt": "Paseo del granjero"},
+    {"nombre": "Paseo del granjero", "grupo": "antebrazo", "tipo": "compuesto",
+     "casa": False, "evitar": ["sin_material"], "alt": "Colgarse de la barra"},
+    {"nombre": "Colgarse de la barra", "grupo": "antebrazo", "tipo": "aislamiento",
+     "casa": True, "evitar": ["hombro"], "alt": "Apretar una pelota blanda"},
+    {"nombre": "Apretar una pelota blanda", "grupo": "antebrazo", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Colgarse de la barra"},
+
+    # ===================== CUÁDRICEPS =====================
+    {"nombre": "Sentadilla con barra", "grupo": "cuadriceps", "tipo": "compuesto",
+     "casa": False, "evitar": ["rodilla", "espalda", "sin_material"],
+     "alt": "Prensa de piernas"},
+    {"nombre": "Sentadilla frontal", "grupo": "cuadriceps", "tipo": "compuesto",
+     "casa": False, "evitar": ["rodilla", "muneca", "sin_material"], "alt": "Prensa de piernas"},
+    {"nombre": "Prensa de piernas", "grupo": "cuadriceps", "tipo": "compuesto",
+     "casa": False, "evitar": ["sin_material"], "alt": "Sentadilla goblet"},
+    {"nombre": "Sentadilla goblet", "grupo": "cuadriceps", "tipo": "compuesto",
+     "casa": False, "evitar": ["rodilla", "sin_material"], "alt": "Sentadilla con peso corporal"},
+    {"nombre": "Hack squat", "grupo": "cuadriceps", "tipo": "compuesto",
+     "casa": False, "evitar": ["rodilla", "sin_material"], "alt": "Prensa de piernas"},
+    {"nombre": "Extensión de cuádriceps", "grupo": "cuadriceps", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Sentadilla isométrica en la pared"},
+    {"nombre": "Sentadilla búlgara", "grupo": "cuadriceps", "tipo": "compuesto",
+     "casa": True, "evitar": ["rodilla"], "alt": "Hip thrust"},
+    {"nombre": "Sentadilla con peso corporal", "grupo": "cuadriceps", "tipo": "compuesto",
+     "casa": True, "evitar": ["rodilla"], "alt": "Puente de glúteo"},
+    {"nombre": "Zancadas", "grupo": "cuadriceps", "tipo": "compuesto",
+     "casa": True, "evitar": ["rodilla"], "alt": "Peso muerto rumano con mancuernas"},
+    {"nombre": "Step-up a cajón bajo", "grupo": "cuadriceps", "tipo": "compuesto",
+     "casa": True, "evitar": ["rodilla"], "alt": "Hip thrust"},
+    {"nombre": "Sentadilla isométrica en la pared", "grupo": "cuadriceps", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Puente de glúteo"},
+
+    # ===================== FEMORAL =====================
+    {"nombre": "Peso muerto rumano", "grupo": "femoral", "tipo": "compuesto",
+     "casa": False, "evitar": ["espalda", "sin_material"], "alt": "Curl femoral tumbado"},
+    {"nombre": "Peso muerto rumano con mancuernas", "grupo": "femoral", "tipo": "compuesto",
+     "casa": False, "evitar": ["espalda", "sin_material"], "alt": "Curl femoral con goma"},
+    {"nombre": "Curl femoral tumbado", "grupo": "femoral", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Curl femoral con goma"},
+    {"nombre": "Curl femoral sentado", "grupo": "femoral", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Curl femoral con goma"},
+    {"nombre": "Curl femoral con goma", "grupo": "femoral", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Puente de glúteo a una pierna"},
+    {"nombre": "Curl nórdico asistido", "grupo": "femoral", "tipo": "compuesto",
+     "casa": True, "evitar": ["rodilla"], "alt": "Curl femoral con goma"},
+    {"nombre": "Buenos días", "grupo": "femoral", "tipo": "compuesto",
+     "casa": False, "evitar": ["espalda", "sin_material"], "alt": "Peso muerto rumano con mancuernas"},
+
+    # ===================== GLÚTEO =====================
+    {"nombre": "Hip thrust", "grupo": "gluteo", "tipo": "compuesto",
+     "casa": True, "evitar": [], "alt": "Puente de glúteo"},
+    {"nombre": "Puente de glúteo", "grupo": "gluteo", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Puente de glúteo a una pierna"},
+    {"nombre": "Puente de glúteo a una pierna", "grupo": "gluteo", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Patada de glúteo"},
+    {"nombre": "Patada de glúteo", "grupo": "gluteo", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Puente de glúteo"},
+    {"nombre": "Abducción de cadera en máquina", "grupo": "gluteo", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Abducción con goma"},
+    {"nombre": "Abducción con goma", "grupo": "gluteo", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Almeja tumbado de lado"},
+    {"nombre": "Almeja tumbado de lado", "grupo": "gluteo", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Abducción con goma"},
+
+    # ===================== GEMELO =====================
+    {"nombre": "Elevación de gemelos de pie", "grupo": "gemelo", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Elevación de gemelos a una pierna"},
+    {"nombre": "Elevación de gemelos a una pierna", "grupo": "gemelo", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Elevación de gemelos de pie"},
+    {"nombre": "Elevación de gemelos sentado", "grupo": "gemelo", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Elevación de gemelos de pie"},
+    {"nombre": "Saltos a la comba", "grupo": "gemelo", "tipo": "compuesto",
+     "casa": True, "evitar": ["rodilla"], "alt": "Elevación de gemelos de pie"},
+
+    # ===================== CORE =====================
     {"nombre": "Plancha abdominal", "grupo": "core", "tipo": "aislamiento",
-     "casa": True, "evitar": ["muneca"],
-     "alt": "Plancha apoyando los antebrazos"},
+     "casa": True, "evitar": ["muneca"], "alt": "Plancha sobre antebrazos"},
+    {"nombre": "Plancha sobre antebrazos", "grupo": "core", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Bicho muerto (dead bug)"},
+    {"nombre": "Plancha lateral", "grupo": "core", "tipo": "aislamiento",
+     "casa": True, "evitar": ["hombro"], "alt": "Bicho muerto (dead bug)"},
     {"nombre": "Elevación de piernas colgado", "grupo": "core", "tipo": "aislamiento",
-     "casa": False, "evitar": ["hombro", "sin_material"],
-     "alt": "Elevación de piernas tumbado"},
+     "casa": False, "evitar": ["hombro", "sin_material"], "alt": "Elevación de piernas tumbado"},
     {"nombre": "Elevación de piernas tumbado", "grupo": "core", "tipo": "aislamiento",
-     "casa": True, "evitar": ["espalda"],
-     "alt": "Bicho muerto (dead bug)"},
+     "casa": True, "evitar": ["espalda"], "alt": "Bicho muerto (dead bug)"},
     {"nombre": "Bicho muerto (dead bug)", "grupo": "core", "tipo": "aislamiento",
-     "casa": True, "evitar": [],
-     "alt": "Plancha apoyando los antebrazos"},
+     "casa": True, "evitar": [], "alt": "Plancha sobre antebrazos"},
+    {"nombre": "Bird dog", "grupo": "core", "tipo": "aislamiento",
+     "casa": True, "evitar": [], "alt": "Plancha sobre antebrazos"},
     {"nombre": "Rueda abdominal", "grupo": "core", "tipo": "compuesto",
      "casa": False, "evitar": ["espalda", "muneca", "sin_material"],
-     "alt": "Plancha apoyando los antebrazos"},
+     "alt": "Plancha sobre antebrazos"},
+    {"nombre": "Crunch en polea", "grupo": "core", "tipo": "aislamiento",
+     "casa": False, "evitar": ["sin_material"], "alt": "Crunch en el suelo"},
+    {"nombre": "Crunch en el suelo", "grupo": "core", "tipo": "aislamiento",
+     "casa": True, "evitar": ["espalda"], "alt": "Bicho muerto (dead bug)"},
+    {"nombre": "Giros rusos", "grupo": "core", "tipo": "aislamiento",
+     "casa": True, "evitar": ["espalda"], "alt": "Plancha lateral"},
+    {"nombre": "Escaladores (mountain climbers)", "grupo": "core", "tipo": "compuesto",
+     "casa": True, "evitar": ["muneca", "rodilla"], "alt": "Bicho muerto (dead bug)"},
 
-    # --- Cardio ---
+    # ===================== CARDIO =====================
     {"nombre": "Cardio suave 20-30 min", "grupo": "cardio", "tipo": "cardio",
-     "casa": True, "evitar": [],
-     "alt": "Caminar a paso rápido 40 min"},
+     "casa": True, "evitar": [], "alt": "Caminar a paso rápido 40 min"},
+    {"nombre": "Caminar a paso rápido 40 min", "grupo": "cardio", "tipo": "cardio",
+     "casa": True, "evitar": [], "alt": "Bici estática 30 min"},
     {"nombre": "Intervalos (HIIT) 15 min", "grupo": "cardio", "tipo": "cardio",
-     "casa": True, "evitar": ["rodilla"],
-     "alt": "Cardio suave 30 min en bici estática"},
+     "casa": True, "evitar": ["rodilla"], "alt": "Bici estática 30 min"},
+    {"nombre": "Bici estática 30 min", "grupo": "cardio", "tipo": "cardio",
+     "casa": False, "evitar": ["sin_material"], "alt": "Caminar a paso rápido 40 min"},
+    {"nombre": "Remo ergómetro 15 min", "grupo": "cardio", "tipo": "cardio",
+     "casa": False, "evitar": ["espalda", "sin_material"], "alt": "Cardio suave 20-30 min"},
+    {"nombre": "Elíptica 25 min", "grupo": "cardio", "tipo": "cardio",
+     "casa": False, "evitar": ["sin_material"], "alt": "Caminar a paso rápido 40 min"},
 ]
 
 
@@ -491,13 +651,16 @@ def estimar_plazo(perfil: dict, metricas: dict) -> dict:
 DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 # Qué grupos toca cada tipo de sesión, y en qué orden (primero lo pesado).
+# El nombre del día NO se guarda aquí: se deduce de los ejercicios que acaban
+# saliendo (ver titulo_de_sesion), para que si cambias el contenido el título
+# cambie con él en vez de quedarse mintiendo.
 PLANTILLAS = {
-    "cuerpo_entero": ("Cuerpo entero", ["pierna", "espalda", "pecho", "hombro", "brazo", "core"]),
-    "torso":         ("Torso", ["pecho", "espalda", "hombro", "brazo", "brazo", "core"]),
-    "pierna":        ("Pierna", ["pierna", "pierna", "pierna", "pierna", "core"]),
-    "empuje":        ("Empuje (pecho, hombro, tríceps)", ["pecho", "pecho", "hombro", "hombro", "brazo"]),
-    "tiron":         ("Tirón (espalda y bíceps)", ["espalda", "espalda", "espalda", "brazo", "brazo"]),
-    "cardio":        ("Cardio y core", ["cardio", "core", "core"]),
+    "cuerpo_entero": ["cuadriceps", "espalda", "pecho", "femoral", "hombro", "core"],
+    "torso":         ["pecho", "espalda", "hombro", "biceps", "triceps", "core"],
+    "pierna":        ["cuadriceps", "femoral", "gluteo", "cuadriceps", "gemelo", "core"],
+    "empuje":        ["pecho", "pecho", "hombro", "hombro", "triceps", "triceps"],
+    "tiron":         ["espalda", "espalda", "espalda", "biceps", "biceps", "antebrazo"],
+    "cardio":        ["cardio", "core", "core", "gluteo"],
 }
 
 # Qué sesiones se hacen según cuántos días puedas entrenar.
@@ -512,9 +675,44 @@ REPARTOS = {
 }
 
 
+# Cuántas veces como mucho se dice "en lugar de X" en una misma sesión.
+TOPE_AVISOS_SUSTITUCION = 2
+
+
 def _ejercicio_valido(ejercicio: dict, limitaciones: list) -> bool:
     """¿Este ejercicio es apto con las limitaciones que tiene la persona?"""
     return not any(lim in ejercicio["evitar"] for lim in limitaciones)
+
+
+def _alternativa_segura(ejercicio: dict, limitaciones: list) -> str | None:
+    """
+    Con qué cambiar este ejercicio, comprobando que el cambio también valga.
+
+    El campo "alt" del catálogo es una alternativa genérica, buena de normal
+    pero ciega a TUS limitaciones: a quien le duele la rodilla le proponía
+    cambiar la prensa por una sentadilla goblet, que es justo lo que no debe
+    hacer. Así que la alternativa se valida igual que el ejercicio, y si no
+    hay ninguna que valga se prefiere no decir nada antes que decir algo que
+    haga daño.
+    """
+    if not limitaciones:
+        return ejercicio["alt"]
+
+    por_nombre = {e["nombre"]: e for e in EJERCICIOS}
+    propuesta = por_nombre.get(ejercicio["alt"])
+    if propuesta is None or _ejercicio_valido(propuesta, limitaciones):
+        return ejercicio["alt"]
+
+    # La del catálogo no vale: buscamos otra del mismo músculo que sí, dando
+    # preferencia a las del mismo tipo (un compuesto se cambia por otro).
+    del_grupo = [e for e in EJERCICIOS
+                 if e["grupo"] == ejercicio["grupo"]
+                 and e["nombre"] != ejercicio["nombre"]
+                 and _ejercicio_valido(e, limitaciones)]
+    if not del_grupo:
+        return None
+    del_grupo.sort(key=lambda e: 0 if e["tipo"] == ejercicio["tipo"] else 1)
+    return del_grupo[0]["nombre"]
 
 
 def _elegir_ejercicios(grupos: list, limitaciones: list, variante: int = 0) -> list:
@@ -529,6 +727,8 @@ def _elegir_ejercicios(grupos: list, limitaciones: list, variante: int = 0) -> l
     """
     elegidos = []
     usados = set()
+    repeticion = {}   # cuántos huecos lleva ya este grupo en esta misma sesión
+    avisos = 0        # cuántos "en lugar de..." llevamos dichos en esta sesión
 
     for grupo in grupos:
         candidatos = [e for e in EJERCICIOS if e["grupo"] == grupo and e["nombre"] not in usados]
@@ -540,23 +740,38 @@ def _elegir_ejercicios(grupos: list, limitaciones: list, variante: int = 0) -> l
 
         aptos = [e for e in candidatos if _ejercicio_valido(e, limitaciones)]
         if aptos:
-            elegido = aptos[variante % len(aptos)]
+            # Si el grupo repite hueco (tres de espalda seguidos, por ejemplo)
+            # damos un salto por el catálogo en vez de coger los de al lado: si
+            # no, salían "dominadas, dominadas supinas y dominadas asistidas".
+            vuelta = repeticion.get(grupo, 0)
+            repeticion[grupo] = vuelta + 1
+            salto = max(1, len(aptos) // 3)
+            elegido = aptos[(variante + vuelta * salto) % len(aptos)]
 
             # ¿Hubo que descartar alguno mejor por una LESIÓN? Solo avisamos en
             # ese caso: si la limitación es "sin material" o "poco tiempo", que
             # cambie casi todo es lo esperado, y repetirlo en cada línea sería
             # ruido que tapa los avisos que sí importan.
+            #
+            # Y aun con lesiones, como mucho dos avisos por sesión: con una
+            # rodilla tocada casi todos los ejercicios de pierna son sustitución,
+            # y un día entero de "en lugar de..." deja de leerse. La lista
+            # completa de lo que hay que evitar está en su propio apartado.
             lesiones = [l for l in limitaciones
                         if l not in ("sin_material", "poco_tiempo")]
             descartado = next((e for e in candidatos if e is not elegido
                                and not _ejercicio_valido(e, lesiones)), None) if lesiones else None
             if descartado:
                 usados.add(descartado["nombre"])
+                if avisos >= TOPE_AVISOS_SUSTITUCION:
+                    descartado = None
+                else:
+                    avisos += 1
 
             elegidos.append({
                 "nombre": elegido["nombre"],
                 "grupo": grupo,
-                "alternativa": elegido["alt"],
+                "alternativa": _alternativa_segura(elegido, limitaciones),
                 "sustituye_a": descartado["nombre"] if descartado else None,
             })
             usados.add(elegido["nombre"])
@@ -570,11 +785,13 @@ def _elegir_ejercicios(grupos: list, limitaciones: list, variante: int = 0) -> l
             seguros = [e for e in del_grupo if _ejercicio_valido(e, limitaciones)]
 
             if seguros:
-                elegido = seguros[variante % len(seguros)]
+                vuelta = repeticion.get(grupo, 0)
+                repeticion[grupo] = vuelta + 1
+                elegido = seguros[(variante + vuelta) % len(seguros)]
                 elegidos.append({
                     "nombre": elegido["nombre"],
                     "grupo": grupo,
-                    "alternativa": elegido["alt"],
+                    "alternativa": _alternativa_segura(elegido, limitaciones),
                     "sustituye_a": None,
                 })
             else:
@@ -583,6 +800,54 @@ def _elegir_ejercicios(grupos: list, limitaciones: list, variante: int = 0) -> l
                 continue
 
     return elegidos
+
+
+def titulo_de_sesion(ejercicios: list) -> str:
+    """
+    Pone nombre al día a partir de los ejercicios que tiene DE VERDAD.
+
+    Antes el título venía fijado por la plantilla, así que si cambiabas todos
+    los ejercicios del lunes por sentadillas, el día seguía diciendo "Pecho".
+    Ahora el nombre se calcula mirando qué grupos musculares hay, así que
+    siempre cuadra con lo que vas a hacer, lo haya elegido JOKER o tú.
+    """
+    if not ejercicios:
+        return "Descanso"
+
+    cuenta = Counter(e.get("grupo") for e in ejercicios if e.get("grupo") in GRUPOS)
+    if not cuenta:
+        return "Sesión propia"
+
+    # Core y cardio suelen ser el acompañamiento, no el plato principal: se
+    # callan mientras haya un grupo que pese al menos lo mismo que ellos. Si no
+    # lo hay, el día ES de cardio y abdomen y el título tiene que decirlo.
+    relleno = {g: n for g, n in cuenta.items() if g in ("core", "cardio")}
+    principales = {g: n for g, n in cuenta.items() if g not in ("core", "cardio")}
+    if not principales:
+        if cuenta.get("cardio") and cuenta.get("core"):
+            return "Cardio y abdomen"
+        return "Cardio" if cuenta.get("cardio") else "Abdomen y core"
+    if relleno and max(principales.values()) >= max(relleno.values()):
+        relleno = {}
+    principales.update(relleno)
+
+    arriba = sum(n for g, n in principales.items() if g in GRUPOS_SUPERIOR)
+    abajo = sum(n for g, n in principales.items() if g in GRUPOS_INFERIOR)
+    if arriba and abajo and len(principales) >= 4:
+        return "Cuerpo entero"
+
+    # Los más trabajados primero. A igualdad de ejercicios, mandan el orden de
+    # GRUPOS, para que el mismo día no se titule distinto cada vez que se pinta.
+    orden_grupos = list(GRUPOS)
+    ordenados = sorted(principales.items(),
+                       key=lambda par: (-par[1], orden_grupos.index(par[0])))
+    nombres = [GRUPOS_CORTO[g] for g, _ in ordenados[:3]]
+
+    if len(nombres) == 1:
+        titulo = nombres[0]
+    else:
+        titulo = ", ".join(nombres[:-1]) + " y " + nombres[-1]
+    return titulo[0].upper() + titulo[1:]
 
 
 def generar_rutina(perfil: dict) -> list:
@@ -608,28 +873,30 @@ def generar_rutina(perfil: dict) -> list:
     for numero_dia, nombre_dia in enumerate(DIAS_SEMANA):
         if indice_entreno < len(posiciones) and numero_dia == posiciones[indice_entreno]:
             clave = reparto[indice_entreno]
-            titulo, grupos = PLANTILLAS[clave]
+            grupos = PLANTILLAS[clave]
 
             # Si esta sesión ya salió antes en la semana, cambiamos los
             # ejercicios para que el segundo día no sea calcado al primero.
             variante = veces_usada.get(clave, 0)
             veces_usada[clave] = variante + 1
-            if variante:
-                titulo = f"{titulo} · variante {variante + 1}"
 
-            ejercicios = _elegir_ejercicios(grupos, limitaciones, variante)[:tope]
+            # Al desplazar también por el número de sesión evitamos que dos
+            # plantillas distintas que comparten grupo (empuje y torso comparten
+            # pecho y hombro) arranquen las dos por el mismo ejercicio.
+            ejercicios = _elegir_ejercicios(
+                grupos, limitaciones, variante * 2 + indice_entreno)[:tope]
 
             # En definición añadimos algo de cardio al final si no lo lleva ya
             if objetivo == "perder_grasa" and clave != "cardio":
                 ejercicios.append({
                     "nombre": "Cardio suave 20 min al terminar", "grupo": "cardio",
-                    "alternativa": "Caminar 30 min", "sustituye_a": None,
+                    "alternativa": "Caminar a paso rápido 40 min", "sustituye_a": None,
                 })
 
             semana.append({
                 "dia": nombre_dia,
                 "descanso": False,
-                "titulo": titulo,
+                "titulo": titulo_de_sesion(ejercicios),
                 "series": esquema["series"],
                 "reps": esquema["reps"],
                 "tiempo_descanso": esquema["descanso"],
@@ -687,16 +954,24 @@ COMIDAS = {
 }
 
 
-def sugerir_menu(calorias_objetivo: int, proteina_objetivo: int) -> dict:
+# Cuántos menús distintos guardamos para ir rotando. Que no sea múltiplo de 7
+# es a propósito: así el menú de un lunes no es el mismo que el del lunes
+# siguiente, y no acabas comiendo lentejas todos los lunes de tu vida.
+MENUS_EN_ROTACION = 12
+
+
+def menus_posibles(calorias_objetivo: int, proteina_objetivo: int) -> list:
     """
-    Compone un día de comidas que se acerque a las calorías y la proteína
-    marcadas. Prueba combinaciones y se queda con la que menos se desvía.
+    Los mejores menús del día para esas calorías y esa proteína, ordenados de
+    mejor a peor ajuste. Devolvemos varios (no solo el ganador) porque el menú
+    rota: comer bien no puede significar comer siempre lo mismo.
+
+    No repetimos la misma base de desayuno + comida + cena: dos menús que solo
+    se diferencian en el snack no son dos menús, son el mismo con otra fruta.
     """
     import itertools
 
-    mejor = None
-    menor_error = float("inf")
-
+    candidatos = []
     # Probamos con 1, 2 y 3 snacks: con pocas calorías sobra uno, y con
     # objetivos altos hacen falta varios para no quedarse corto.
     for num_snacks in (1, 2, 3):
@@ -712,13 +987,78 @@ def sugerir_menu(calorias_objetivo: int, proteina_objetivo: int) -> dict:
                         error = abs(kcal - calorias_objetivo) / max(calorias_objetivo, 1)
                         error += 1.5 * max(0, proteina_objetivo - prot) / max(proteina_objetivo, 1)
 
-                        if error < menor_error:
-                            menor_error = error
-                            mejor = {
-                                "desayuno": desayuno, "comida": comida,
-                                "cena": cena, "snacks": list(snacks),
-                                "kcal_base": kcal, "proteina_base": prot,
-                            }
+                        candidatos.append((error, {
+                            "desayuno": desayuno, "comida": comida,
+                            "cena": cena, "snacks": list(snacks),
+                            "kcal_base": kcal, "proteina_base": prot,
+                        }))
+
+    candidatos.sort(key=lambda par: par[0])
+
+    # Un menú del que habría que servir el doble de ración no es un menú tuyo:
+    # solo dejamos los que se cuadran agrandando o reduciendo raciones dentro
+    # de lo razonable (el mismo margen 0,7-1,6 que aplica sugerir_menu).
+    def cuadrable(menu):
+        if not menu["kcal_base"]:
+            return False
+        return 0.7 <= calorias_objetivo / menu["kcal_base"] <= 1.6
+
+    razonables = [par for par in candidatos if cuadrable(par[1])]
+    if len(razonables) >= MENUS_EN_ROTACION:
+        candidatos = razonables
+
+    # Ordenar por ajuste y coger los primeros no basta: el desayuno que mejor
+    # cuadra gana todas las veces y acabas desayunando el mismo batido doce
+    # días seguidos. Así que limitamos cuántas veces puede repetirse cada plato
+    # dentro de la rotación, y solo aflojamos el límite si no salen suficientes.
+    tope_plato = max(2, MENUS_EN_ROTACION // 4)
+
+    elegidos, bases = [], set()
+    for limite in (tope_plato, MENUS_EN_ROTACION):
+        veces = Counter()
+        for menu in elegidos:
+            for turno in ("desayuno", "comida", "cena"):
+                veces[menu[turno]["nombre"]] += 1
+
+        for _, menu in candidatos:
+            if len(elegidos) == MENUS_EN_ROTACION:
+                break
+            platos = [menu[turno]["nombre"] for turno in ("desayuno", "comida", "cena")]
+            base = tuple(platos)
+            if base in bases or any(veces[p] >= limite for p in platos):
+                continue
+            bases.add(base)
+            elegidos.append(menu)
+            for p in platos:
+                veces[p] += 1
+
+        if len(elegidos) == MENUS_EN_ROTACION:
+            break
+
+    return elegidos
+
+
+def sugerir_menu(calorias_objetivo: int, proteina_objetivo: int,
+                 rotacion: int | None = None) -> dict:
+    """
+    El menú de hoy: el que mejor cuadra con tus calorías y tu proteína.
+
+    `rotacion` elige cuál de los menús buenos toca. Si no se indica, se usa la
+    fecha de hoy, así que el menú cambia cada día y la semana que viene te
+    tocan otros: no es una lista fija colgada en la nevera.
+    """
+    from datetime import date
+
+    posibles = menus_posibles(calorias_objetivo, proteina_objetivo)
+    if not posibles:
+        return {}
+
+    if rotacion is None:
+        rotacion = date.today().toordinal()
+    indice = rotacion % len(posibles)
+    mejor = dict(posibles[indice])
+    mejor["rotacion"] = indice
+    mejor["menus_disponibles"] = len(posibles)
 
     # Aunque elijamos la mejor combinación, con platos fijos es imposible
     # clavar cualquier cifra. En vez de mentir con el total, decimos cuánto
@@ -965,6 +1305,8 @@ def plan_completo(perfil: dict) -> dict:
         "evitar": ejercicios_a_evitar(perfil.get("limitaciones", [])),
         "grafica": datos_grafica(perfil, plazo),
         "menu": sugerir_menu(nutricion["calorias"], nutricion["proteina_g"]),
+        "semana_iso": semana_actual(),
+        "dias_hechos": dias_completados(),
         "consejos": generar_consejos(perfil, metricas, plazo, nutricion),
         "aviso": ("Estos números son orientativos, calculados con fórmulas estándar. "
                   "No son consejo médico. Si tienes alguna condición de salud o tomas "
@@ -1002,6 +1344,16 @@ def resumen_texto(plan: dict) -> str:
     dias_entreno = [d for d in plan["rutina"] if not d["descanso"]]
     lineas.append(f"Rutina: {len(dias_entreno)} días por semana -> " +
                   ", ".join(f"{d['dia']} ({d['titulo']})" for d in dias_entreno))
+
+    # Lo que de verdad ha hecho esta semana, no lo que tenía planeado.
+    hechos = plan.get("dias_hechos") or []
+    pendientes = [d["dia"] for d in dias_entreno if d["dia"] not in hechos]
+    if hechos:
+        lineas.append(f"Esta semana ya ha marcado como hechos: {', '.join(hechos)}. "
+                      + (f"Le quedan: {', '.join(pendientes)}." if pendientes
+                         else "No le queda ninguno: semana completa."))
+    else:
+        lineas.append("Esta semana todavía no ha marcado ningún día como hecho.")
 
     menu = plan["menu"]
     lineas.append(
@@ -1092,12 +1444,79 @@ def datos_grafica(perfil: dict, plazo: dict) -> dict:
                 "kg": round(peso_inicio + (meta - peso_inicio) * avance, 2),
             })
 
+    # Si no hay trayectoria, la gráfica no puede quedarse muda: hay que decir
+    # por qué falta y qué hacer para que aparezca. Antes simplemente no se
+    # dibujaba nada y parecía que la línea prevista era de adorno.
+    motivo = None
+    if not proyeccion:
+        if not perfil.get("peso_objetivo"):
+            motivo = ("Para ver la trayectoria prevista, dime a qué peso quieres llegar: "
+                      'está en "Tu meta" → "Peso objetivo". Sin ese dato no hay meta hacia '
+                      "la que trazar la línea.")
+        elif perfil.get("objetivo") == "mantener":
+            motivo = ("Tu objetivo es mantenerte, así que no hay una subida ni una bajada "
+                      "que prever: la referencia es tu peso de ahora.")
+        else:
+            motivo = plazo.get("mensaje") or ("No hay trayectoria que dibujar con los datos "
+                                              "actuales.")
+
     return {
         "registros": registros,
         "proyeccion": proyeccion,
         "peso_objetivo": plazo.get("meta_usada") if plazo.get("aplica") else None,
+        "peso_inicio": peso_inicio,
+        "fecha_meta": proyeccion[-1]["fecha"] if proyeccion else None,
+        "motivo_sin_proyeccion": motivo,
         "hay_datos": bool(registros),
     }
+
+
+# ---------------------------------------------------------------------------
+# Días completados
+# ---------------------------------------------------------------------------
+# Marcar un día como hecho es la única parte del gimnasio que cuenta algo real:
+# lo demás son planes. Se guarda por semana ISO, así que cada lunes la semana
+# arranca limpia sola, sin tener que borrar nada a mano.
+
+def _tabla_completados(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS dias_hechos (
+            semana TEXT NOT NULL,
+            dia    TEXT NOT NULL,
+            PRIMARY KEY (semana, dia)
+        )
+    """)
+
+
+def semana_actual() -> str:
+    """La semana de hoy en formato ISO ('2026-W38'), que es la clave de guardado."""
+    from datetime import date
+    anio, numero, _ = date.today().isocalendar()
+    return f"{anio}-W{numero:02d}"
+
+
+def marcar_dia(dia: str, hecho: bool, semana: str | None = None) -> list:
+    """Marca (o desmarca) un día de esta semana como completado."""
+    semana = semana or semana_actual()
+    with _conexion() as con:
+        _tabla_completados(con)
+        if hecho:
+            con.execute("INSERT OR IGNORE INTO dias_hechos (semana, dia) VALUES (?, ?)",
+                        (semana, dia))
+        else:
+            con.execute("DELETE FROM dias_hechos WHERE semana = ? AND dia = ?", (semana, dia))
+    return dias_completados(semana)
+
+
+def dias_completados(semana: str | None = None) -> list:
+    """Qué días has dado por hechos esta semana."""
+    semana = semana or semana_actual()
+    with _conexion() as con:
+        _tabla_completados(con)
+        filas = con.execute("SELECT dia FROM dias_hechos WHERE semana = ?", (semana,)).fetchall()
+    # En el orden de la semana, no en el que se fueron marcando
+    hechos = {f["dia"] for f in filas}
+    return [d for d in DIAS_SEMANA if d in hechos]
 
 
 # ---------------------------------------------------------------------------
@@ -1225,6 +1644,6 @@ def ejercicios_a_evitar(limitaciones: list) -> list:
                 "ejercicio": ejercicio["nombre"],
                 "grupo": ejercicio["grupo"],
                 "por": [LIMITACIONES[m] for m in motivos],
-                "cambiar_por": ejercicio["alt"],
+                "cambiar_por": _alternativa_segura(ejercicio, limitaciones),
             })
     return evitar

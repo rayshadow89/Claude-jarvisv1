@@ -19,6 +19,14 @@
     --texto:          #f0e7e9;
     --texto-suave:    #a49197;
     --borde:          #2c2225;
+
+    /* El morado de "día completado". No es un morado cualquiera: es
+       exactamente el burdeos de la casa girado de tono, con la misma
+       saturación y la misma luminosidad, así que pertenece a la baraja. */
+    --morado:         #63187c;
+    --morado-claro:   #8928a9;
+    --morado-vivo:    #9f31c4;
+    --morado-texto:   #d9a6ef;   /* para texto pequeño: contraste 9,7:1 */
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,7 +42,10 @@
     padding-bottom: 60px;
   }
 
-  .app { width: 100%; max-width: 940px; margin: 0 auto; padding: 0 20px; }
+  /* Ancha de verdad: los siete días de la semana tienen que caber de lado a
+     lado sin que el usuario vaya haciendo scroll para ver el domingo. */
+  .app { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 20px;
+         position: relative; z-index: 1; }
 
   /* ---------- Cabecera ---------- */
   header {
@@ -134,20 +145,71 @@
   .numero .detalle { font-size: 0.76rem; color: #6b585e; margin-top: 3px; }
 
   /* ---------- Rutina ---------- */
-  .semana { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  /*
+    Los siete días, uno al lado del otro. En pantalla ancha se reparten a
+    partes iguales (repeat(7, 1fr)): así ves la semana entera de un vistazo,
+    que es como se mira una semana. Según se estrecha la ventana van bajando
+    a 4, a 2 y por último a una sola columna en el móvil.
+  */
+  .semana { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+  /* Editando es otra cosa: en siete columnas los desplegables salen cortados
+     ("Press de ba…") y no se puede elegir nada. Ahí manda poder leerlos. */
+  .semana.editando { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  @media (max-width: 1120px) {
+    .semana { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  }
+  @media (max-width: 760px) {
+    .semana { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 460px) {
+    .semana { grid-template-columns: 1fr; }
+  }
+
   .dia { background: var(--negro-carta); border: 1px solid var(--borde);
-    border-radius: 10px; padding: 14px 16px; }
-  .dia.libre { opacity: 0.5; }
-  .dia h3 { font-family: 'Cinzel', Georgia, serif; font-size: 0.88rem;
-    letter-spacing: 0.08em; color: #fff; margin-bottom: 3px; }
-  .dia .tipo { font-size: 0.75rem; color: var(--burdeos-claro); margin-bottom: 10px; }
-  .dia .pauta { font-size: 0.72rem; color: #6b585e; margin-bottom: 10px;
-    padding-bottom: 8px; border-bottom: 1px dashed var(--borde); }
+    border-radius: 10px; padding: 12px 11px; min-width: 0;
+    display: flex; flex-direction: column; }
+  .dia.libre { opacity: 0.62; }
+  .dia h3 { font-family: 'Cinzel', Georgia, serif; font-size: 0.82rem;
+    letter-spacing: 0.06em; color: #fff; margin-bottom: 3px; }
+  .dia .tipo { font-size: 0.72rem; color: var(--burdeos-claro); margin-bottom: 9px;
+    line-height: 1.35; }
+  .dia .pauta { font-size: 0.68rem; color: #6b585e; margin-bottom: 9px;
+    padding-bottom: 7px; border-bottom: 1px dashed var(--borde); line-height: 1.4; }
   .dia ul { list-style: none; }
-  .dia li { font-size: 0.83rem; padding: 5px 0; border-bottom: 1px solid rgba(44,34,37,0.5); }
+  .dia li { font-size: 0.78rem; line-height: 1.4; padding: 5px 0;
+    border-bottom: 1px solid rgba(44,34,37,0.5); overflow-wrap: anywhere; }
   .dia li:last-child { border-bottom: none; }
-  .alt { display: block; font-size: 0.71rem; color: #6b585e; margin-top: 2px; }
+  .alt { display: block; font-size: 0.68rem; color: #6b585e; margin-top: 2px;
+    line-height: 1.35; }
   .cambiado { color: var(--burdeos-claro); }
+
+  /* ---------- Día completado ---------- */
+  /*
+    Marcar el día es lo único de esta página que cuenta algo que ya ha pasado,
+    así que se ve distinto al resto: el día hecho se pasa al morado y deja de
+    competir por tu atención con los que todavía te quedan.
+  */
+  /* margin-top:auto la empuja abajo del todo: con los días en columna, las
+     casillas quedan alineadas entre sí aunque un día tenga más ejercicios. */
+  .hecho-caja { display: flex; align-items: center; gap: 7px;
+    margin-top: auto; padding-top: 9px;
+    border-top: 1px dashed var(--borde); cursor: pointer;
+    font-size: 0.72rem; color: var(--texto-suave); user-select: none; }
+  .hecho-caja input { accent-color: var(--morado-vivo); cursor: pointer; margin: 0; }
+  .hecho-caja:hover { color: var(--texto); }
+
+  .dia.hecho {
+    border-color: var(--morado-claro);
+    background: linear-gradient(160deg, rgba(99, 24, 124, 0.32), var(--negro-carta) 80%);
+  }
+  .dia.hecho h3 { color: var(--morado-texto); }
+  .dia.hecho .tipo { color: var(--morado-texto); }
+  .dia.hecho .hecho-caja { color: var(--morado-texto); border-top-color: var(--morado); }
+  .dia.hecho li { border-bottom-color: rgba(137, 40, 169, 0.25); }
+  .dia.hecho .sello {
+    display: inline-block; margin-left: auto; font-size: 0.62rem;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--morado-texto);
+  }
 
   /* ---------- Menú ---------- */
   .comidas { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
@@ -233,6 +295,58 @@
   .marca-propia { font-size: 0.7rem; color: var(--burdeos-claro);
     letter-spacing: 0.1em; text-transform: uppercase; }
 
+  /* ---------- Añadir un ejercicio que no está en la lista ---------- */
+  /*
+    Por muchos ejercicios que traiga el catálogo, siempre faltará el que tú
+    haces. Aquí lo escribes y eliges de qué grupo es: sin el grupo, el título
+    del día no sabría contarlo y diría una cosa por otra.
+  */
+  .propio-caja { margin-top: 8px; padding: 10px; border: 1px dashed var(--burdeos);
+    border-radius: 8px; background: rgba(125, 24, 50, 0.08); }
+  .propio-caja label { font-size: 0.68rem; margin-bottom: 4px; }
+  .propio-caja input[type=text] {
+    width: 100%; background: var(--negro-elevado); border: 1px solid var(--borde);
+    color: var(--texto); font-family: inherit; font-size: 0.8rem;
+    padding: 7px 9px; border-radius: 7px; outline: none; }
+  .propio-caja input[type=text]:focus { border-color: var(--burdeos); }
+  .propio-caja select { font-size: 0.8rem; padding: 7px 9px; margin-top: 7px; }
+  .propio-caja .fila-botones { display: flex; gap: 6px; margin-top: 8px; }
+  .propio-caja .fila-botones button {
+    flex: 1; font-family: inherit; font-size: 0.75rem; padding: 7px;
+    border-radius: 7px; cursor: pointer; border: 1px solid var(--borde);
+    background: var(--negro-elevado); color: var(--texto-suave); }
+  .propio-caja .fila-botones button.si {
+    background: linear-gradient(145deg, var(--burdeos-claro), var(--burdeos));
+    border-color: transparent; color: #fff; }
+
+  /* ---------- Zoom de la gráfica ---------- */
+  .rangos { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .rango {
+    background: var(--negro-elevado); border: 1px solid var(--borde);
+    color: var(--texto-suave); font-family: inherit; font-size: 0.75rem;
+    padding: 6px 13px; border-radius: 16px; cursor: pointer;
+    transition: all 0.16s ease; }
+  .rango:hover { border-color: var(--burdeos); color: var(--texto); }
+  .rango.activo { background: rgba(125, 24, 50, 0.3); border-color: var(--burdeos);
+    color: #fff; }
+
+  .sin-proyeccion {
+    margin-top: 12px; padding: 12px 15px; border-radius: 8px;
+    border: 1px solid var(--borde); border-left: 3px solid var(--burdeos-vivo);
+    background: rgba(125, 24, 50, 0.12); font-size: 0.82rem; line-height: 1.6;
+    color: var(--texto-suave); }
+
+  /* ---------- Rotación del menú ---------- */
+  .menu-cabecera { display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap; margin-bottom: 12px; }
+  .menu-nota { font-size: 0.78rem; color: #6b585e; line-height: 1.5; flex: 1;
+    min-width: 200px; }
+  .otro-menu { background: var(--negro-elevado); border: 1px solid var(--borde);
+    color: var(--texto-suave); font-family: inherit; font-size: 0.78rem;
+    padding: 8px 16px; border-radius: 8px; cursor: pointer;
+    transition: all 0.16s ease; white-space: nowrap; }
+  .otro-menu:hover { border-color: var(--burdeos); color: var(--texto); }
+
   /* ---------- Limitaciones ---------- */
   .describir { margin-top: 14px; }
   .describir textarea { width: 100%; background: var(--negro-elevado);
@@ -260,6 +374,10 @@
 </style>
 </head>
 <body>
+
+<!-- Los palos de la baraja son de toda la web, no solo del chat -->
+{% include '_palos.html' %}
+
 <div class="app">
 
   <header>
@@ -370,7 +488,9 @@
             Trayectoria prevista
           </div>
         </div>
+        <div class="rangos" id="rangos"></div>
         <div class="grafica-caja" id="grafica"></div>
+        <div id="aviso-grafica"></div>
 
         <div class="registrar">
           <div>
@@ -406,6 +526,10 @@
 
     <section>
       <h2>Menú de hoy</h2>
+      <div class="menu-cabecera">
+        <div class="menu-nota" id="menu-nota"></div>
+        <button class="otro-menu" id="otro-menu">Enséñame otro menú</button>
+      </div>
       <div class="comidas" id="comidas"></div>
       <div class="tarjeta" id="resumen-menu" style="margin-top:12px"></div>
     </section>
@@ -452,19 +576,150 @@
   // meta. Los colores están validados para daltonismo (ΔE 22 en deuteranopia,
   // 30 en visión normal) y además la proyección va discontinua, así que la
   // diferencia no depende solo del color.
+  //
+  // La trayectoria prevista tenía dos motivos para parecer decorativa:
+  //   1. Sin peso objetivo no existe, y la gráfica no lo decía. Ahora lo dice.
+  //   2. Cuando existe, abarca meses, así que tus primeros días ocupaban un
+  //      2% del ancho y no se veía ni tu línea ni la diferencia entre las dos.
+  //      Por eso ahora se puede acercar la vista a tus registros.
 
   const COLOR_REAL = '#c33055';        // burdeos de la casa
   const COLOR_PREVISTO = '#3987e5';    // azul, validado contra el burdeos
   const SUPERFICIE = '#14100f';
+  const DIA_MS = 86400000;
+
+  let graficaActual = null;
+  let rangoGrafica = null;   // null = todavía no ha elegido nadie
+
+  const RANGOS = [
+    {clave: 'registros', texto: 'Mis registros'},
+    {clave: 'tres',      texto: '3 meses'},
+    {clave: 'todo',      texto: 'Todo el plan'},
+  ];
+
+  const aMs = (iso) => new Date(iso).getTime();
+  const aIso = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+  // Qué trozo de tiempo se ve, según el botón elegido.
+  function ventanaGrafica(grafica, rango) {
+    const registros = grafica.registros || [];
+    const proyeccion = grafica.proyeccion || [];
+    const todos = [...registros, ...proyeccion].map(d => aMs(d.fecha));
+    const tIni = Math.min(...todos), tFin = Math.max(...todos);
+
+    if (rango === 'todo' || !registros.length) return [tIni, tFin];
+
+    const rIni = aMs(registros[0].fecha);
+    const rFin = aMs(registros[registros.length - 1].fecha);
+
+    if (rango === 'tres') {
+      return [rIni, Math.min(rIni + 92 * DIA_MS, Math.max(tFin, rFin + 7 * DIA_MS))];
+    }
+
+    // "Mis registros": tu tramo, con un poco de aire a los lados para que la
+    // línea no salga pegada al borde. Mínimo una semana de ancho.
+    const ancho = Math.max(rFin - rIni, 7 * DIA_MS);
+    const aire = ancho * 0.12;
+    return [rIni - aire, rFin + aire];
+  }
+
+  // La ventana corta la serie por la mitad: en vez de tirar los puntos que se
+  // salen, calculamos dónde cruza la línea el borde, para que llegue hasta él.
+  function interpolar(a, b, t) {
+    const ta = aMs(a.fecha), tb = aMs(b.fecha);
+    const avance = tb === ta ? 0 : (t - ta) / (tb - ta);
+    return {fecha: aIso(t), kg: a.kg + (b.kg - a.kg) * avance, calculado: true};
+  }
+
+  function recortar(serie, desde, hasta) {
+    if (!serie.length) return [];
+    if (serie.length === 1) {
+      const t = aMs(serie[0].fecha);
+      return (t >= desde && t <= hasta) ? serie.slice() : [];
+    }
+
+    const salida = [];
+    for (let i = 0; i < serie.length; i++) {
+      const t = aMs(serie[i].fecha);
+      if (t < desde || t > hasta) continue;
+      if (i > 0 && aMs(serie[i - 1].fecha) < desde) {
+        salida.push(interpolar(serie[i - 1], serie[i], desde));
+      }
+      salida.push(serie[i]);
+      if (i < serie.length - 1 && aMs(serie[i + 1].fecha) > hasta) {
+        salida.push(interpolar(serie[i], serie[i + 1], hasta));
+      }
+    }
+
+    // La ventana cae entera entre dos puntos: dibujamos el tramo que la cruza.
+    if (!salida.length) {
+      for (let i = 0; i < serie.length - 1; i++) {
+        const ta = aMs(serie[i].fecha), tb = aMs(serie[i + 1].fecha);
+        if (ta <= desde && tb >= hasta) {
+          return [interpolar(serie[i], serie[i + 1], desde),
+                  interpolar(serie[i], serie[i + 1], hasta)];
+        }
+      }
+    }
+    return salida;
+  }
+
+  // Qué vista enseñamos la primera vez. Si tus registros ocupan una miseria
+  // del plan entero, empezamos acercados: es tu línea la que has venido a ver.
+  function rangoPorDefecto(grafica) {
+    const registros = grafica.registros || [];
+    const proyeccion = grafica.proyeccion || [];
+    if (!registros.length || proyeccion.length < 2) return 'todo';
+
+    const anchoRegistros = aMs(registros[registros.length - 1].fecha) - aMs(registros[0].fecha);
+    const anchoTotal = aMs(proyeccion[proyeccion.length - 1].fecha) - aMs(proyeccion[0].fecha);
+    if (!anchoTotal) return 'todo';
+    return (anchoRegistros / anchoTotal) < 0.35 ? 'registros' : 'todo';
+  }
+
+  function pintarRangos(grafica) {
+    const caja = $('rangos');
+    caja.innerHTML = '';
+    // Sin proyección no hay nada que acercar ni alejar: sobran los botones.
+    if (!(grafica.proyeccion || []).length || !(grafica.registros || []).length) return;
+
+    for (const r of RANGOS) {
+      const b = document.createElement('button');
+      b.className = 'rango' + (r.clave === rangoGrafica ? ' activo' : '');
+      b.textContent = r.texto;
+      b.addEventListener('click', () => {
+        rangoGrafica = r.clave;
+        pintarRangos(grafica);
+        dibujarGrafica(grafica);
+      });
+      caja.appendChild(b);
+    }
+  }
+
+  // Cuando no hay trayectoria, explicamos por qué y qué hacer para tenerla.
+  function avisoGrafica(grafica) {
+    const caja = $('aviso-grafica');
+    caja.innerHTML = '';
+    if (!grafica.motivo_sin_proyeccion) return;
+    const div = document.createElement('div');
+    div.className = 'sin-proyeccion';
+    div.textContent = grafica.motivo_sin_proyeccion;
+    caja.appendChild(div);
+  }
 
   function dibujarGrafica(grafica) {
+    graficaActual = grafica;
     const caja = $('grafica');
     caja.innerHTML = '';
 
-    const registros = grafica.registros || [];
-    const proyeccion = grafica.proyeccion || [];
+    if (rangoGrafica === null) rangoGrafica = rangoPorDefecto(grafica);
 
-    if (!registros.length && !proyeccion.length) {
+    const todosRegistros = grafica.registros || [];
+    const todaProyeccion = grafica.proyeccion || [];
+
+    avisoGrafica(grafica);
+
+    if (!todosRegistros.length && !todaProyeccion.length) {
       const vacio = document.createElement('div');
       vacio.style.cssText = 'text-align:center;color:#6b585e;padding:40px 20px;line-height:1.7';
       vacio.textContent = 'Apunta tu primer peso abajo y aquí verás tu evolución '
@@ -473,6 +728,10 @@
       return;
     }
 
+    const [tMin, tMax] = ventanaGrafica(grafica, rangoGrafica);
+    const registros = recortar(todosRegistros, tMin, tMax);
+    const proyeccion = recortar(todaProyeccion, tMin, tMax);
+
     // --- Dimensiones ---
     const ancho = Math.max(caja.clientWidth || 640, 320);
     const alto = 320;
@@ -480,19 +739,15 @@
     const anchoUtil = ancho - margen.izquierda - margen.derecha;
     const altoUtil = alto - margen.arriba - margen.abajo;
 
-    // --- Escalas ---
-    const todos = [...registros, ...proyeccion];
-    const fechas = todos.map(d => new Date(d.fecha).getTime());
-    const kilos = todos.map(d => d.kg);
-
-    const tMin = Math.min(...fechas), tMax = Math.max(...fechas);
+    // --- Escala vertical ---
+    const kilos = [...registros, ...proyeccion].map(d => d.kg);
+    if (!kilos.length) kilos.push(grafica.peso_inicio || 70);
     let kMin = Math.min(...kilos), kMax = Math.max(...kilos);
     const respiro = Math.max((kMax - kMin) * 0.15, 1);
     kMin -= respiro; kMax += respiro;
 
     const x = (fecha) => margen.izquierda +
-      (tMax === tMin ? anchoUtil / 2
-       : (new Date(fecha).getTime() - tMin) / (tMax - tMin) * anchoUtil);
+      (tMax === tMin ? anchoUtil / 2 : (aMs(fecha) - tMin) / (tMax - tMin) * anchoUtil);
     const y = (kg) => margen.arriba + altoUtil - (kg - kMin) / (kMax - kMin) * altoUtil;
 
     // --- SVG ---
@@ -544,12 +799,29 @@
     const marcasX = 5;
     for (let i = 0; i <= marcasX; i++) {
       const t = tMin + (tMax - tMin) * i / marcasX;
-      const iso = new Date(t).toISOString().slice(0, 10);
+      const iso = aIso(t);
       const etiqueta = crear('text', {
         x: x(iso), y: alto - margen.abajo + 20,
         'text-anchor': 'middle', fill: '#a49197', 'font-size': 11,
       });
       etiqueta.textContent = formatoFecha(iso);
+      svg.appendChild(etiqueta);
+    }
+
+    // --- El peso objetivo, si cae dentro de lo que se está viendo ---
+    const meta = grafica.peso_objetivo;
+    if (meta && meta >= kMin && meta <= kMax) {
+      svg.appendChild(crear('line', {
+        x1: margen.izquierda, y1: y(meta), x2: ancho - margen.derecha, y2: y(meta),
+        stroke: COLOR_PREVISTO, 'stroke-width': 1, 'stroke-dasharray': '2 4', opacity: 0.55,
+      }));
+      // La etiqueta va a la izquierda: a la derecha es justo donde llega la
+      // trayectoria prevista y se pisaban la una a la otra.
+      const etiqueta = crear('text', {
+        x: margen.izquierda + 6, y: y(meta) - 6,
+        'text-anchor': 'start', fill: COLOR_PREVISTO, 'font-size': 10,
+      });
+      etiqueta.textContent = `meta ${meta} kg`;
       svg.appendChild(etiqueta);
     }
 
@@ -572,6 +844,7 @@
       }));
     }
     for (const punto of registros) {
+      if (punto.calculado) continue;   // los de los bordes son cálculo, no peso tuyo
       svg.appendChild(crear('circle', {
         cx: x(punto.fecha), cy: y(punto.kg), r: 5,
         fill: COLOR_REAL, stroke: SUPERFICIE, 'stroke-width': 2,
@@ -610,7 +883,7 @@
       const t = tMin + (px - margen.izquierda) / anchoUtil * (tMax - tMin);
       const objetivo = new Date(t);
 
-      const real = masCercano(registros, objetivo);
+      const real = masCercano(registros.filter(p => !p.calculado), objetivo);
       const previsto = masCercano(proyeccion, objetivo);
       const refe = real || previsto;
       if (!refe) return;
@@ -763,7 +1036,7 @@
 
     for (const [grupo, lista] of Object.entries(porGrupo)) {
       const og = document.createElement('optgroup');
-      og.label = grupo.charAt(0).toUpperCase() + grupo.slice(1);
+      og.label = (opciones.grupos && opciones.grupos[grupo]) || grupo;
       for (const e of lista) {
         const op = document.createElement('option');
         op.value = e.nombre;
@@ -776,16 +1049,99 @@
       }
       sel.appendChild(og);
     }
-    // Si lo que había no está en el catálogo (ej. el cardio añadido), lo conservamos
+    // Si lo que había no está en el catálogo (un ejercicio tuyo, o el cardio
+    // que añade JOKER en definición), lo conservamos tal cual.
     if (valorActual && !catalogo.some(e => e.nombre === valorActual)) {
       const op = document.createElement('option');
       op.value = valorActual;
-      op.textContent = valorActual;
+      op.textContent = valorActual + '  ·  tuyo';
       op.selected = true;
       sel.insertBefore(op, sel.firstChild);
     }
     sel.addEventListener('change', () => alCambiar(sel.value));
     return sel;
+  }
+
+  // Un desplegable con los grupos musculares, para decir de qué es un
+  // ejercicio que añades tú.
+  function selectorGrupo(valorActual) {
+    const sel = document.createElement('select');
+    for (const [clave, nombre] of Object.entries(opciones.grupos || {})) {
+      const op = document.createElement('option');
+      op.value = clave;
+      op.textContent = nombre;
+      if (clave === valorActual) op.selected = true;
+      sel.appendChild(op);
+    }
+    return sel;
+  }
+
+  // --------------------------------------------------------------------
+  // El nombre del día, calculado a partir de los ejercicios que tiene
+  // --------------------------------------------------------------------
+  // Es la misma regla que aplica el servidor en gym.titulo_de_sesion. Aquí
+  // está repetida solo para que veas el título cambiar mientras editas; el
+  // que se guarda lo vuelve a calcular el servidor al recibir la rutina.
+
+  function tituloDeSesion(ejercicios) {
+    if (!ejercicios || !ejercicios.length) return 'Descanso';
+
+    const grupos = opciones.grupos || {};
+    const cuenta = {};
+    for (const e of ejercicios) {
+      if (e.grupo && grupos[e.grupo]) cuenta[e.grupo] = (cuenta[e.grupo] || 0) + 1;
+    }
+    const claves = Object.keys(cuenta);
+    if (!claves.length) return 'Sesión propia';
+
+    const relleno = {}, principales = {};
+    for (const g of claves) {
+      (g === 'core' || g === 'cardio' ? relleno : principales)[g] = cuenta[g];
+    }
+    if (!Object.keys(principales).length) {
+      if (cuenta.cardio && cuenta.core) return 'Cardio y abdomen';
+      return cuenta.cardio ? 'Cardio' : 'Abdomen y core';
+    }
+
+    const maxPrincipal = Math.max(...Object.values(principales));
+    const hayRelleno = Object.keys(relleno).length > 0;
+    if (!hayRelleno || maxPrincipal < Math.max(...Object.values(relleno))) {
+      Object.assign(principales, relleno);
+    }
+
+    const superior = new Set(opciones.grupos_superior || []);
+    const inferior = new Set(opciones.grupos_inferior || []);
+    const soloMusculo = Object.keys(principales).filter(g => g !== 'core' && g !== 'cardio');
+    const arriba = soloMusculo.filter(g => superior.has(g)).length;
+    const abajo = soloMusculo.filter(g => inferior.has(g)).length;
+    if (arriba && abajo && soloMusculo.length >= 4) return 'Cuerpo entero';
+
+    const orden = opciones.grupos_orden || Object.keys(grupos);
+    const nombres = Object.entries(principales)
+      .sort((a, b) => (b[1] - a[1]) || (orden.indexOf(a[0]) - orden.indexOf(b[0])))
+      .slice(0, 3)
+      .map(([g]) => (opciones.grupos_corto && opciones.grupos_corto[g]) || grupos[g].toLowerCase());
+
+    const texto = nombres.length === 1
+      ? nombres[0]
+      : nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1];
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+  }
+
+  // --------------------------------------------------------------------
+  // Días completados
+  // --------------------------------------------------------------------
+  // Se guardan por semana ISO, así que cada lunes empiezan en blanco solos.
+
+  let diasHechos = new Set();
+
+  async function marcarDia(dia, hecho) {
+    const r = await fetch('/api/gym/completado', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({dia, hecho}),
+    });
+    const datos = await r.json();
+    if (datos.dias_hechos) diasHechos = new Set(datos.dias_hechos);
   }
 
   // ====================================================================
@@ -945,21 +1301,42 @@
   }
 
   // Pinta los 7 días. En modo edición, cada ejercicio es un desplegable y
-  // se pueden quitar o añadir; fuera de edición es solo lectura.
+  // se pueden quitar, cambiar o añadir (del catálogo o escritos por ti);
+  // fuera de edición es solo lectura, con la casilla de "día completado".
   function pintarSemana(rutina, editable) {
     const semana = $('semana');
     semana.innerHTML = '';
+    semana.classList.toggle('editando', !!editable);
 
     rutina.forEach((dia, indiceDia) => {
+      // El título sale de los ejercicios que el día tiene ahora mismo: si
+      // cambias el contenido del lunes, el nombre del lunes cambia con él en
+      // vez de quedarse diciendo "día de pecho". Mientras editas lo calcula la
+      // página para que lo veas al momento; en reposo mandamos el del
+      // servidor, que es el que se ha guardado.
+      const titulo = editable
+        ? tituloDeSesion(dia.ejercicios || [])
+        : (dia.titulo || tituloDeSesion(dia.ejercicios || []));
+
+      const hecho = !editable && !dia.descanso && diasHechos.has(dia.dia);
+
       const div = document.createElement('div');
       div.className = 'dia' + (dia.descanso && !editable ? ' libre' : '')
-                    + (editable ? ' editando' : '');
+                    + (editable ? ' editando' : '') + (hecho ? ' hecho' : '');
 
       const h = document.createElement('h3');
       h.textContent = dia.dia;
+      if (hecho) {
+        const sello = document.createElement('span');
+        sello.className = 'sello';
+        sello.textContent = 'hecho';
+        h.style.display = 'flex';
+        h.style.alignItems = 'baseline';
+        h.appendChild(sello);
+      }
       const tipo = document.createElement('div');
       tipo.className = 'tipo';
-      tipo.textContent = dia.titulo;
+      tipo.textContent = titulo;
       div.append(h, tipo);
 
       if (!dia.descanso) {
@@ -983,6 +1360,7 @@
               alternativa: ficha ? ficha.alternativa : null,
               sustituye_a: null,   // si lo eliges tú, ya no es una sustitución mía
             };
+            pintarSemana(rutinaTrabajo, true);   // el título del día, al día
           }));
           const quitar = document.createElement('button');
           quitar.className = 'quitar';
@@ -1012,22 +1390,25 @@
       div.appendChild(ul);
 
       if (editable) {
-        const anadir = document.createElement('button');
-        anadir.className = 'anadir';
-        anadir.textContent = dia.descanso ? '+ Convertir en día de entreno' : '+ Añadir ejercicio';
-        anadir.addEventListener('click', () => {
+        // Convierte un día de descanso en uno de entreno, copiando la pauta
+        // (series, reps, descanso) del objetivo que ya tienes calculado.
+        const despertar = () => {
           const d = rutinaTrabajo[indiceDia];
-          if (d.descanso) {
-            // Un día de descanso pasa a ser de entreno: le damos la pauta
-            // del objetivo actual, tomándola de cualquier día que ya entrene
-            const modelo = rutinaTrabajo.find(x => !x.descanso) || {};
-            d.descanso = false;
-            d.titulo = 'Sesión propia';
-            d.series = modelo.series || 3;
-            d.reps = modelo.reps || '8-12';
-            d.tiempo_descanso = modelo.tiempo_descanso || '90 s';
-            d.ejercicios = [];
-          }
+          if (!d.descanso) return d;
+          const modelo = rutinaTrabajo.find(x => !x.descanso) || {};
+          d.descanso = false;
+          d.series = modelo.series || 3;
+          d.reps = modelo.reps || '8-12';
+          d.tiempo_descanso = modelo.tiempo_descanso || '90 s';
+          d.ejercicios = [];
+          return d;
+        };
+
+        const delCatalogo = document.createElement('button');
+        delCatalogo.className = 'anadir';
+        delCatalogo.textContent = dia.descanso ? '+ Convertir en día de entreno' : '+ Añadir del catálogo';
+        delCatalogo.addEventListener('click', () => {
+          const d = despertar();
           const primero = catalogo[0];
           d.ejercicios.push({
             nombre: primero.nombre, grupo: primero.grupo,
@@ -1035,15 +1416,166 @@
           });
           pintarSemana(rutinaTrabajo, true);
         });
-        div.appendChild(anadir);
+        div.appendChild(delCatalogo);
+
+        // Por muchos ejercicios que traiga el catálogo, el tuyo puede no estar.
+        const propio = document.createElement('button');
+        propio.className = 'anadir';
+        propio.textContent = '+ Escribir un ejercicio mío';
+        propio.addEventListener('click', () => {
+          propio.classList.add('oculto');
+          div.appendChild(cajaEjercicioPropio(indiceDia, despertar, () => {
+            pintarSemana(rutinaTrabajo, true);
+          }));
+        });
+        div.appendChild(propio);
+      } else if (!dia.descanso) {
+        // La casilla de "hecho". Es lo único de esta página que habla de algo
+        // que ya ha pasado: lo demás son planes.
+        const etiqueta = document.createElement('label');
+        etiqueta.className = 'hecho-caja';
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.checked = hecho;
+        check.addEventListener('change', async () => {
+          check.disabled = true;
+          if (check.checked) diasHechos.add(dia.dia); else diasHechos.delete(dia.dia);
+          div.classList.toggle('hecho', check.checked);
+          await marcarDia(dia.dia, check.checked);
+          check.disabled = false;
+          pintarSemana(rutina, false);
+        });
+        etiqueta.appendChild(check);
+        etiqueta.appendChild(document.createTextNode('Día completado'));
+        div.appendChild(etiqueta);
       }
 
       semana.appendChild(div);
     });
   }
 
+  // El formulario para añadir un ejercicio que no está en el catálogo: hace
+  // falta el nombre y también el grupo muscular, porque sin grupo el título
+  // del día no sabría contarlo.
+  function cajaEjercicioPropio(indiceDia, despertar, alTerminar) {
+    const caja = document.createElement('div');
+    caja.className = 'propio-caja';
+
+    const et1 = document.createElement('label');
+    et1.textContent = 'Nombre del ejercicio';
+    const nombre = document.createElement('input');
+    nombre.type = 'text';
+    nombre.placeholder = 'Por ejemplo: remo en anillas';
+    nombre.maxLength = 120;
+
+    const et2 = document.createElement('label');
+    et2.textContent = '¿De qué es?';
+    et2.style.marginTop = '8px';
+    const grupo = selectorGrupo('pecho');
+
+    const error = document.createElement('div');
+    error.style.cssText = 'font-size:0.7rem;color:#f5c9d2;margin-top:6px;display:none';
+
+    const botones = document.createElement('div');
+    botones.className = 'fila-botones';
+    const anadir = document.createElement('button');
+    anadir.className = 'si';
+    anadir.textContent = 'Añadir';
+    const cancelar = document.createElement('button');
+    cancelar.textContent = 'Cancelar';
+
+    const guardar = () => {
+      const texto = nombre.value.trim();
+      if (!texto) {
+        error.textContent = 'Ponle nombre al ejercicio.';
+        error.style.display = 'block';
+        nombre.focus();
+        return;
+      }
+      const d = despertar();
+      d.ejercicios.push({nombre: texto, grupo: grupo.value, alternativa: null, sustituye_a: null});
+      alTerminar();
+    };
+
+    anadir.addEventListener('click', guardar);
+    cancelar.addEventListener('click', alTerminar);
+    nombre.addEventListener('keydown', (e) => { if (e.key === 'Enter') guardar(); });
+
+    botones.append(anadir, cancelar);
+    caja.append(et1, nombre, et2, grupo, error, botones);
+    setTimeout(() => nombre.focus(), 0);
+    return caja;
+  }
+
+  // ====================================================================
+  // EL MENÚ DEL DÍA
+  // ====================================================================
+  // Las comidas NO se quedan ahí paradas: hay una docena de menús que cuadran
+  // con tus calorías y tu proteína, y cada día toca uno. Como la lista no es
+  // de siete, el menú de un lunes no es el del lunes siguiente. El botón sirve
+  // para pasar al siguiente cuando hoy no te apetece lo que ha salido.
+
+  let menuVisible = null;
+
+  function pintarMenu(menu) {
+    menuVisible = menu;
+
+    const comidas = $('comidas');
+    comidas.innerHTML = '';
+    const momentos = [
+      ['Desayuno', menu.desayuno],
+      ['Comida', menu.comida],
+      ['Cena', menu.cena],
+      ...menu.snacks.map((s, i) => [`Snack ${i + 1}`, s]),
+    ];
+    for (const [momento, plato] of momentos) {
+      const div = document.createElement('div');
+      div.className = 'comida';
+      const mo = document.createElement('div');
+      mo.className = 'momento';
+      mo.textContent = momento;
+      const pl = document.createElement('div');
+      pl.className = 'plato';
+      pl.textContent = plato.nombre;
+      const ma = document.createElement('div');
+      ma.className = 'macro';
+      ma.textContent = `${plato.kcal} kcal · ${plato.prot} g de proteína`;
+      div.append(mo, pl, ma);
+      comidas.appendChild(div);
+    }
+
+    $('menu-nota').textContent =
+      `Menú ${(menu.rotacion ?? 0) + 1} de ${menu.menus_disponibles ?? 1}. `
+      + 'Cambia solo cada día, y como no son siete, la semana que viene te '
+      + 'tocan otros: no es una lista fija.';
+
+    const resumen = $('resumen-menu');
+    resumen.innerHTML = '';
+    const linea1 = document.createElement('div');
+    linea1.textContent = `Total del día: ${menu.kcal_total} kcal `
+      + `y ${menu.proteina_total} g de proteína.`;
+    const linea2 = document.createElement('div');
+    linea2.style.cssText = 'font-size:0.83rem;color:var(--burdeos-claro);margin-top:7px';
+    linea2.textContent = menu.ajuste_raciones;
+    resumen.append(linea1, linea2);
+  }
+
+  $('otro-menu').addEventListener('click', async () => {
+    if (!menuVisible) return;
+    const siguiente = ((menuVisible.rotacion ?? 0) + 1) % (menuVisible.menus_disponibles || 1);
+    const boton = $('otro-menu');
+    boton.disabled = true;
+    try {
+      const menu = await (await fetch('/api/gym/menu?v=' + siguiente)).json();
+      if (!menu.error) pintarMenu(menu);
+    } finally {
+      boton.disabled = false;
+    }
+  });
+
   function pintarPlan(plan) {
     planActual = plan;
+    diasHechos = new Set(plan.dias_hechos || []);
     const m = plan.metricas, n = plan.nutricion, p = plan.plazo;
 
     // --- Números ---
@@ -1086,39 +1618,7 @@
     pintarSemana(plan.rutina, false);
 
     // --- Menú ---
-    const comidas = $('comidas');
-    comidas.innerHTML = '';
-    const momentos = [
-      ['Desayuno', plan.menu.desayuno],
-      ['Comida', plan.menu.comida],
-      ['Cena', plan.menu.cena],
-      ...plan.menu.snacks.map((s, i) => [`Snack ${i + 1}`, s]),
-    ];
-    for (const [momento, plato] of momentos) {
-      const div = document.createElement('div');
-      div.className = 'comida';
-      const mo = document.createElement('div');
-      mo.className = 'momento';
-      mo.textContent = momento;
-      const pl = document.createElement('div');
-      pl.className = 'plato';
-      pl.textContent = plato.nombre;
-      const ma = document.createElement('div');
-      ma.className = 'macro';
-      ma.textContent = `${plato.kcal} kcal · ${plato.prot} g de proteína`;
-      div.append(mo, pl, ma);
-      comidas.appendChild(div);
-    }
-
-    const resumen = $('resumen-menu');
-    resumen.innerHTML = '';
-    const linea1 = document.createElement('div');
-    linea1.textContent = `Total del día: ${plan.menu.kcal_total} kcal `
-      + `y ${plan.menu.proteina_total} g de proteína.`;
-    const linea2 = document.createElement('div');
-    linea2.style.cssText = 'font-size:0.83rem;color:var(--burdeos-claro);margin-top:7px';
-    linea2.textContent = plan.menu.ajuste_raciones;
-    resumen.append(linea1, linea2);
+    pintarMenu(plan.menu);
 
     // --- Consejos ---
     const cons = $('consejos');
@@ -1154,7 +1654,11 @@
         porque.textContent = e.por.join(' · ');
         const cambio = document.createElement('div');
         cambio.className = 'cambio';
-        cambio.textContent = `Cambia por: ${e.cambiar_por}`;
+        // Puede no haber recambio seguro para ese músculo: entonces se dice
+        // eso, no se inventa uno.
+        cambio.textContent = e.cambiar_por
+          ? `Cambia por: ${e.cambiar_por}`
+          : 'Con tus limitaciones no hay recambio seguro para este: sáltatelo.';
         div.append(cual, porque, cambio);
         evitar.appendChild(div);
       }
@@ -1162,6 +1666,7 @@
 
     // --- Gráfica de peso ---
     dibujarGrafica(plan.grafica);
+    pintarRangos(plan.grafica);   // después: así ya sabe qué vista ha quedado puesta
     pintarHistorial(plan.grafica.registros || []);
     if (!$('peso-fecha').value) {
       $('peso-fecha').value = new Date().toISOString().slice(0, 10);
