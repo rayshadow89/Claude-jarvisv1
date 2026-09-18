@@ -32,7 +32,9 @@ from flask import Flask, jsonify, render_template, request, send_from_directory,
 
 import gastos
 import gym
+import inversiones
 import joker
+import tools
 
 try:
     from dotenv import load_dotenv
@@ -630,17 +632,250 @@ def gastos_borrar_todo():
 
 
 # ---------------------------------------------------------------------------
-# J0KER INVERSIONES  (por ahora, solo el escenario)
+# J0KER INVERSIONES  (la cartera cifrada y el mercado)
 # ---------------------------------------------------------------------------
+# La contraseña de la cartera NO se guarda en ningún sitio: ni en disco, ni en
+# la cookie del navegador. Vive aquí, en la memoria del servidor, atada a la
+# pestaña que la escribió, y se olvida sola por dos caminos:
+#
+#   - al cerrar el servidor (se va toda la memoria),
+#   - y a los 30 minutos sin tocar nada, por si dejas el portátil abierto.
+#
+# Meterla en la cookie sería mandarla al navegador en cada petición, y guardarla
+# en disco sería tirar el cifrado a la basura: con la contraseña al lado, el
+# fichero cifrado no protege de nada.
+
+CLAVES_CARTERA: dict[str, tuple] = {}     # sid -> (clave, último uso)
+MINUTOS_SIN_TOCAR = 30
+
+
+def _sid() -> str:
+    """El identificador de esta pestaña, el mismo que usa el chat."""
+    if "sid" not in session:
+        session["sid"] = secrets.token_hex(16)
+    return session["sid"]
+
+
+def _clave_cartera() -> str | None:
+    """La contraseña de esta sesión, si sigue viva."""
+    import time
+    sid = _sid()
+    guardada = CLAVES_CARTERA.get(sid)
+    if not guardada:
+        return None
+
+    clave, ultimo_uso = guardada
+    if time.time() - ultimo_uso > MINUTOS_SIN_TOCAR * 60:
+        CLAVES_CARTERA.pop(sid, None)
+        return None
+
+    CLAVES_CARTERA[sid] = (clave, time.time())   # sigue en uso: se renueva
+    return clave
+
+
+def _recordar_clave(clave: str) -> None:
+    import time
+    CLAVES_CARTERA[_sid()] = (clave, time.time())
+
+
+def _olvidar_clave() -> None:
+    CLAVES_CARTERA.pop(_sid(), None)
+
+
+def _cartera_abierta():
+    """
+    Devuelve (clave, cartera) o lanza el 401 correspondiente.
+
+    401 y no 403: no es que no tengas permiso, es que aún no te has
+    identificado. El navegador lo usa para saber que tiene que pedir la
+    contraseña otra vez.
+    """
+    clave = _clave_cartera()
+    if clave is None:
+        return None, None
+    try:
+        return clave, inversiones.leer_cartera(clave)
+    except (inversiones.ClaveIncorrecta, inversiones.SinCartera):
+        # La contraseña guardada ya no abre nada (te la han cambiado desde otra
+        # pestaña, o han borrado la cartera). Mejor olvidarla que insistir.
+        _olvidar_clave()
+        return None, None
+
 
 @app.get("/inversiones")
 def pagina_inversiones():
-    """
-    De momento esta página no trae datos: es el sitio preparado para cuando
-    los traiga. La transición a azul, los palos girando a horizontal y el
-    marco donde irán las cotizaciones ya están; lo que falta es el contenido.
-    """
     return render_template("inversiones.html")
+
+
+@app.get("/api/inversiones/estado")
+def inv_estado():
+    """Lo único que se puede saber sin la contraseña."""
+    info = inversiones.info_cartera()
+    return jsonify({
+        "existe": info["existe"],
+        "abierta": _clave_cartera() is not None,
+        "creada": info.get("creada"),
+        "minutos_sin_tocar": MINUTOS_SIN_TOCAR,
+        "clave_minima": inversiones.CLAVE_MINIMA,
+    })
+
+
+@app.post("/api/inversiones/crear")
+def inv_crear():
+    """La primera vez: se elige la contraseña y se crea la cartera vacía."""
+    datos = request.get_json(silent=True) or {}
+    clave = str(datos.get("clave", ""))
+    repetida = str(datos.get("repetida", ""))
+
+    if clave != repetida:
+        return jsonify({"error": "Las dos contraseñas no coinciden."}), 400
+
+    try:
+        inversiones.crear_cartera(clave)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    _recordar_clave(clave)
+    return jsonify({"ok": True, "cartera": _valoracion(clave)})
+
+
+@app.post("/api/inversiones/abrir")
+def inv_abrir():
+    datos = request.get_json(silent=True) or {}
+    clave = str(datos.get("clave", ""))
+
+    try:
+        inversiones.leer_cartera(clave)
+    except inversiones.SinCartera:
+        return jsonify({"error": "Todavía no hay ninguna cartera."}), 404
+    except inversiones.ClaveIncorrecta as e:
+        return jsonify({"error": str(e)}), 401
+
+    _recordar_clave(clave)
+    return jsonify({"ok": True, "cartera": _valoracion(clave)})
+
+
+@app.post("/api/inversiones/cerrar")
+def inv_cerrar():
+    """Bloquear a mano, sin esperar a los 30 minutos."""
+    _olvidar_clave()
+    return jsonify({"ok": True})
+
+
+def _valoracion(clave: str, con_precios: bool = True) -> dict:
+    cartera = inversiones.leer_cartera(clave)
+    valoracion = inversiones.valorar(cartera, con_precios=con_precios)
+    return {
+        **valoracion,
+        "avisos": inversiones.avisos_cartera(valoracion),
+    }
+
+
+@app.get("/api/inversiones/cartera")
+def inv_cartera():
+    clave, cartera = _cartera_abierta()
+    if clave is None:
+        return jsonify({"bloqueada": True}), 401
+    return jsonify({"bloqueada": False, "cartera": _valoracion(clave)})
+
+
+@app.post("/api/inversiones/posicion")
+def inv_guardar_posicion():
+    """Añade una posición nueva, o cambia una que ya estaba (por su id)."""
+    clave, cartera = _cartera_abierta()
+    if clave is None:
+        return jsonify({"bloqueada": True}), 401
+
+    datos = request.get_json(silent=True) or {}
+    try:
+        posicion = inversiones._limpiar_posicion(datos)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    posiciones = cartera.get("posiciones", [])
+    for i, existente in enumerate(posiciones):
+        if existente["id"] == posicion["id"]:
+            posiciones[i] = posicion
+            break
+    else:
+        posiciones.append(posicion)
+
+    if len(posiciones) > 200:
+        return jsonify({"error": "200 posiciones son muchas. ¿Seguro?"}), 400
+
+    cartera["posiciones"] = posiciones
+    inversiones.guardar_cartera(clave, inversiones.normalizar_cartera(cartera))
+    return jsonify({"ok": True, "cartera": _valoracion(clave)})
+
+
+@app.delete("/api/inversiones/posicion/<id_posicion>")
+def inv_borrar_posicion(id_posicion):
+    clave, cartera = _cartera_abierta()
+    if clave is None:
+        return jsonify({"bloqueada": True}), 401
+
+    cartera["posiciones"] = [p for p in cartera.get("posiciones", [])
+                             if p["id"] != id_posicion]
+    inversiones.guardar_cartera(clave, inversiones.normalizar_cartera(cartera))
+    return jsonify({"ok": True, "cartera": _valoracion(clave)})
+
+
+@app.post("/api/inversiones/clave")
+def inv_cambiar_clave():
+    datos = request.get_json(silent=True) or {}
+    vieja = str(datos.get("vieja", ""))
+    nueva = str(datos.get("nueva", ""))
+    repetida = str(datos.get("repetida", ""))
+
+    if nueva != repetida:
+        return jsonify({"error": "Las dos contraseñas nuevas no coinciden."}), 400
+
+    try:
+        inversiones.cambiar_clave(vieja, nueva)
+    except inversiones.ClaveIncorrecta as e:
+        return jsonify({"error": str(e)}), 401
+    except (ValueError, inversiones.SinCartera) as e:
+        return jsonify({"error": str(e)}), 400
+
+    _recordar_clave(nueva)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/inversiones/borrar")
+def inv_borrar_todo():
+    """
+    Borra la cartera entera. Pide la contraseña: si no, cualquiera que se
+    siente delante del portátil podría cargársela sin poder ni leerla.
+    """
+    datos = request.get_json(silent=True) or {}
+    try:
+        inversiones.leer_cartera(str(datos.get("clave", "")))
+    except inversiones.ClaveIncorrecta as e:
+        return jsonify({"error": str(e)}), 401
+    except inversiones.SinCartera:
+        return jsonify({"ok": True})
+
+    inversiones.borrar_cartera()
+    _olvidar_clave()
+    return jsonify({"ok": True})
+
+
+@app.get("/api/inversiones/mercado")
+def inv_mercado():
+    """Los índices de referencia. Es información pública: no pide contraseña."""
+    return jsonify({"indices": inversiones.mercado_hoy()})
+
+
+@app.get("/api/inversiones/historico")
+def inv_historico():
+    simbolo = (request.args.get("s") or "").strip()[:20]
+    if not simbolo:
+        return jsonify({"error": "Falta el símbolo."}), 400
+    try:
+        dias = max(10, min(int(request.args.get("dias", 60)), 365))
+    except ValueError:
+        dias = 60
+    return jsonify({"simbolo": simbolo, "puntos": inversiones.historico(simbolo, dias)})
 
 
 @app.post("/api/nueva")
@@ -668,6 +903,11 @@ def chat():
     messages = _historial()
     messages.append({"role": "user", "content": mensaje})
 
+    # Si el usuario tiene la cartera desbloqueada en esta pestaña, JOKER puede
+    # leerla durante este turno. La contraseña se deja y se quita aquí mismo:
+    # fuera de la conversación, la tool no tiene forma de abrir nada.
+    tools.poner_clave_cartera(_clave_cartera())
+
     try:
         respuesta = joker.run_turn(client, messages, TOOL_DEFS)
     except openai.AuthenticationError:
@@ -687,6 +927,8 @@ def chat():
         return jsonify({"error": f"Error de la API ({e.status_code}): {e.message}"}), 502
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        tools.poner_clave_cartera(None)
 
     _recortar(messages)
 

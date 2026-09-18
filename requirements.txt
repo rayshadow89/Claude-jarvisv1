@@ -10,6 +10,10 @@ python-dotenv>=1.0.0
 tzdata>=2024.1
 # Servidor web, para la página de app.py
 flask>=3.0.0
+# Cifrado de verdad (AES-256-GCM) para la cartera de inversiones. Sin esto, la
+# sala de inversiones no arranca: es preferible que falle a que guarde en claro
+# lo que se ha prometido guardar cifrado.
+cryptography>=41.0.0
 
 # --- Solo si quieres probar las otras versiones (guardadas como referencia) ---
 # joker_gemini.py -> descomenta:

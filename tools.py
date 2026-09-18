@@ -680,6 +680,239 @@ def consultar_gastos() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tool 8: cotizacion_bolsa — cuánto vale algo hoy
+# ---------------------------------------------------------------------------
+
+def cotizacion_bolsa(simbolo: str) -> str:
+    """
+    El precio de una acción, un índice, una divisa o una cripto.
+
+    Sale de Stooq: gratis, sin clave y sin registro. A cambio llega con
+    retraso, así que se dice la fecha y la hora del dato en vez de dejar que
+    parezca tiempo real.
+    """
+    import inversiones  # import diferido
+
+    simbolo = (simbolo or "").strip()
+    if not simbolo:
+        raise ToolError("Dime qué símbolo quieres mirar (por ejemplo AAPL.US o ^IBEX).")
+
+    dato = inversiones.cotizacion(simbolo)
+    if not dato:
+        raise ToolError(
+            f"No he podido leer '{simbolo}'. Los símbolos llevan sufijo de mercado: "
+            f"AAPL.US para EE. UU., ITX.ES para España, ^SPX o ^IBEX para índices, "
+            f"EURUSD para divisas, BTCUSD para bitcoin. Comprueba que sea uno de esos, "
+            f"o puede que no haya internet."
+        )
+
+    partes = [f"{dato['simbolo']}: {dato['precio']}"]
+    if dato["variacion_dia"] is not None:
+        partes.append(f"({dato['variacion_dia']:+.2f}% en el día)")
+    if dato["minimo"] is not None and dato["maximo"] is not None:
+        partes.append(f"rango del día {dato['minimo']}-{dato['maximo']}")
+    partes.append(f"dato del {dato['fecha']} {dato['hora']}".rstrip())
+
+    return (" · ".join(partes) +
+            ". Es una cotización gratuita con retraso, no tiempo real: dilo si el "
+            "usuario va a tomar una decisión con ella.")
+
+
+# ---------------------------------------------------------------------------
+# Tool 9: consultar_cartera — dónde tiene metido el dinero
+# ---------------------------------------------------------------------------
+# Esta tool es distinta a las demás: los datos están CIFRADOS, y solo se pueden
+# leer si el usuario ha desbloqueado su cartera en la página. La contraseña
+# vive en la memoria del servidor, nunca aquí.
+
+import threading
+
+_CONTEXTO = threading.local()
+
+
+def poner_clave_cartera(clave: str | None) -> None:
+    """
+    El servidor deja aquí la contraseña de la cartera ANTES de cada turno, y la
+    quita después. Va en threading.local y no en una variable normal porque el
+    servidor puede atender a varias pestañas a la vez, y la contraseña de una
+    no puede acabar sirviendo a otra.
+    """
+    _CONTEXTO.clave_cartera = clave
+
+
+def consultar_cartera() -> str:
+    """
+    Qué tiene el usuario invertido, cuánto puso y cuánto vale hoy.
+
+    Solo funciona con la cartera desbloqueada. Si está cerrada no hay forma de
+    leerla, y eso no es un fallo: es justo lo que se pidió al cifrarla.
+    """
+    import inversiones  # import diferido
+
+    clave = getattr(_CONTEXTO, "clave_cartera", None)
+    if not clave:
+        if not inversiones.hay_cartera():
+            raise ToolError(
+                "El usuario todavía no ha creado su cartera. Dile que entre en la "
+                "página /inversiones y la cree: le pedirá una contraseña, y lo que "
+                "apunte quedará cifrado en su ordenador."
+            )
+        raise ToolError(
+            "La cartera está cerrada con llave y no puedo abrirla: está cifrada con "
+            "una contraseña que solo sabe el usuario. Dile que la desbloquee en la "
+            "página /inversiones y que vuelva a preguntarte. NO le pidas la "
+            "contraseña por el chat."
+        )
+
+    try:
+        cartera = inversiones.leer_cartera(clave)
+    except (inversiones.ClaveIncorrecta, inversiones.SinCartera):
+        raise ToolError("La cartera ya no se puede abrir con la sesión actual. "
+                        "Dile al usuario que vuelva a desbloquearla en /inversiones.")
+
+    return inversiones.resumen_texto(inversiones.valorar(cartera))
+
+
+# ---------------------------------------------------------------------------
+# Tool 10: convertir_moneda — cuánto es esto en euros
+# ---------------------------------------------------------------------------
+
+def convertir_moneda(cantidad: float, desde: str, hasta: str = "EUR") -> str:
+    """
+    Pasa una cantidad de una moneda a otra con los cambios del Banco Central
+    Europeo, que son los oficiales y no cuestan nada.
+    """
+    import requests
+
+    try:
+        cantidad = float(cantidad)
+    except (TypeError, ValueError):
+        raise ToolError("La cantidad tiene que ser un número.")
+
+    desde = (desde or "").strip().upper()[:3]
+    hasta = (hasta or "EUR").strip().upper()[:3]
+    if len(desde) != 3 or len(hasta) != 3:
+        raise ToolError("Las monedas van en código de tres letras: EUR, USD, GBP, JPY...")
+
+    if desde == hasta:
+        return f"{cantidad:g} {desde} son {cantidad:g} {hasta}, obviamente."
+
+    try:
+        r = requests.get("https://api.frankfurter.app/latest",
+                         params={"amount": cantidad, "from": desde, "to": hasta},
+                         timeout=10)
+        if r.status_code == 404:
+            raise ToolError(f"No conozco el par {desde}/{hasta}. El Banco Central "
+                            f"Europeo no publica todas las monedas del mundo.")
+        r.raise_for_status()
+        datos = r.json()
+    except requests.RequestException as e:
+        raise ToolError(f"No he podido consultar el cambio: {e}") from e
+
+    resultado = (datos.get("rates") or {}).get(hasta)
+    if resultado is None:
+        raise ToolError(f"No he obtenido el cambio de {desde} a {hasta}.")
+
+    unidad = resultado / cantidad if cantidad else 0
+    return (f"{cantidad:g} {desde} = {resultado:,.2f} {hasta} "
+            f"(1 {desde} = {unidad:.4f} {hasta}, cambio del Banco Central Europeo "
+            f"del {datos.get('date', 'hoy')}).")
+
+
+# ---------------------------------------------------------------------------
+# Tools 11 y 12: la libreta
+# ---------------------------------------------------------------------------
+# Un asistente que se olvida de todo en cuanto cierras la ventana sirve de poco.
+# Esto es lo más simple que arregla eso: apuntar cosas y volver a leerlas. Se
+# guarda en la misma base local que lo demás, sin salir del ordenador.
+
+def _tabla_notas(con) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS notas (
+            id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha  TEXT NOT NULL,
+            texto  TEXT NOT NULL
+        )
+    """)
+
+
+def _conexion_notas():
+    import sqlite3
+    from pathlib import Path
+    con = sqlite3.connect(Path(__file__).parent / "joker.db")
+    con.row_factory = sqlite3.Row
+    return con
+
+
+def guardar_nota(texto: str) -> str:
+    """Apunta algo para que no se pierda al cerrar la conversación."""
+    from datetime import datetime
+
+    texto = (texto or "").strip()
+    if not texto:
+        raise ToolError("No me has dicho qué apuntar.")
+    if len(texto) > 1000:
+        raise ToolError("La nota es demasiado larga (más de 1000 caracteres). "
+                        "Resúmela antes de guardarla.")
+
+    ahora = datetime.now().isoformat(timespec="seconds")
+    with _conexion_notas() as con:
+        _tabla_notas(con)
+        cur = con.execute("INSERT INTO notas (fecha, texto) VALUES (?, ?)", (ahora, texto))
+        numero = cur.lastrowid
+
+    return (f"Apuntado (nota {numero}). Está guardada en el ordenador del usuario, "
+            f"no en internet.")
+
+
+def leer_notas(buscar: str = "", cuantas: int = 10) -> str:
+    """Lee lo apuntado, de lo último a lo primero."""
+    cuantas = max(1, min(int(cuantas or 10), 50))
+    buscar = (buscar or "").strip()
+
+    with _conexion_notas() as con:
+        _tabla_notas(con)
+        if buscar:
+            filas = con.execute(
+                "SELECT * FROM notas WHERE texto LIKE ? ORDER BY id DESC LIMIT ?",
+                (f"%{buscar}%", cuantas)).fetchall()
+        else:
+            filas = con.execute(
+                "SELECT * FROM notas ORDER BY id DESC LIMIT ?", (cuantas,)).fetchall()
+
+    if not filas:
+        if buscar:
+            raise ToolError(f"No hay ninguna nota que hable de '{buscar}'.")
+        raise ToolError("La libreta está vacía: el usuario todavía no ha apuntado nada.")
+
+    from datetime import datetime
+    lineas = [f"Notas guardadas{f' sobre {buscar}' if buscar else ''}:"]
+    for f in filas:
+        try:
+            cuando = datetime.fromisoformat(f["fecha"]).strftime("%d/%m/%Y %H:%M")
+        except ValueError:
+            cuando = f["fecha"]
+        lineas.append(f"  [{f['id']}] {cuando} — {f['texto']}")
+    return "\n".join(lineas)
+
+
+def borrar_nota(numero: int) -> str:
+    """Quita una nota por su número."""
+    try:
+        numero = int(numero)
+    except (TypeError, ValueError):
+        raise ToolError("Dime el número de la nota que hay que borrar.")
+
+    with _conexion_notas() as con:
+        _tabla_notas(con)
+        cur = con.execute("DELETE FROM notas WHERE id = ?", (numero,))
+        if cur.rowcount == 0:
+            raise ToolError(f"No hay ninguna nota con el número {numero}.")
+
+    return f"Nota {numero} borrada."
+
+
+# ---------------------------------------------------------------------------
 # Registro de tools
 # ---------------------------------------------------------------------------
 
@@ -836,6 +1069,120 @@ TOOL_SCHEMAS = [
             "required": [],
         },
     },
+    {
+        "name": "cotizacion_bolsa",
+        "description": (
+            "El precio de una acción, un índice de bolsa, una divisa o una "
+            "criptomoneda. Úsala cuando pregunten cuánto vale algo que cotiza: "
+            "'¿a cuánto está Apple?', '¿cómo va el IBEX?', '¿cuánto vale el "
+            "bitcoin?'. Es una cotización gratuita CON RETRASO, no tiempo real: "
+            "dilo al darla."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "simbolo": {
+                    "type": "string",
+                    "description": (
+                        "El símbolo con su sufijo de mercado: AAPL.US, MSFT.US "
+                        "(EE. UU.); ITX.ES, SAN.ES (España); ^SPX, ^NDQ, ^IBEX, "
+                        "^DAX (índices); EURUSD, EURGBP (divisas); BTCUSD, ETHUSD "
+                        "(cripto). Si el usuario dice el nombre de la empresa, "
+                        "tradúcelo tú al símbolo."
+                    ),
+                }
+            },
+            "required": ["simbolo"],
+        },
+    },
+    {
+        "name": "consultar_cartera",
+        "description": (
+            "Qué tiene el usuario invertido: en qué empresas, cuánto puso, cuánto "
+            "vale hoy y cuánto gana o pierde. Úsala cuando pregunte por SUS "
+            "inversiones, su cartera o cómo van sus acciones. Los datos están "
+            "cifrados: si la cartera está cerrada, la tool te lo dirá y lo único "
+            "que hay que hacer es pedirle que la desbloquee en la página. NUNCA le "
+            "pidas la contraseña por el chat, ni la repitas si la escribe."
+        ),
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "convertir_moneda",
+        "description": (
+            "Pasa una cantidad de una moneda a otra con los cambios oficiales del "
+            "Banco Central Europeo. Úsala siempre que haya que convertir dinero, "
+            "en vez de calcularlo de memoria con un cambio que puede estar viejo."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "cantidad": {"type": "number", "description": "Cuánto convertir."},
+                "desde": {"type": "string", "description": "Moneda de origen: EUR, USD, GBP, JPY..."},
+                "hasta": {"type": "string", "description": "Moneda de destino. Por defecto EUR."},
+            },
+            "required": ["cantidad", "desde"],
+        },
+    },
+    {
+        "name": "guardar_nota",
+        "description": (
+            "Apunta algo en la libreta del usuario para que no se pierda al cerrar "
+            "la conversación. Úsala cuando te pida recordar algo ('apúntame que...', "
+            "'recuérdame que...', 'guarda esto'), y también cuando cuente un dato "
+            "suyo que claramente va a querer recuperar más adelante. Se guarda en su "
+            "ordenador, no en internet."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "texto": {
+                    "type": "string",
+                    "description": "Lo que hay que apuntar, redactado para que se "
+                                   "entienda solo dentro de un mes.",
+                }
+            },
+            "required": ["texto"],
+        },
+    },
+    {
+        "name": "leer_notas",
+        "description": (
+            "Lee lo que el usuario tiene apuntado en su libreta. Úsala cuando "
+            "pregunte qué tenía apuntado, qué le habías guardado, o cuando busque "
+            "algo que te dijo hace tiempo."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "buscar": {
+                    "type": "string",
+                    "description": "Palabra para filtrar las notas. Déjalo vacío "
+                                   "para ver las últimas.",
+                },
+                "cuantas": {
+                    "type": "integer",
+                    "description": "Cuántas traer (1-50, por defecto 10).",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "borrar_nota",
+        "description": (
+            "Quita una nota de la libreta por su número. Úsala solo si el usuario "
+            "lo pide claramente; si no sabes qué número es, léelas antes con "
+            "leer_notas y confirma cuál."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "numero": {"type": "integer", "description": "El número de la nota."},
+            },
+            "required": ["numero"],
+        },
+    },
 ]
 
 TOOL_FUNCTIONS = {
@@ -846,6 +1193,12 @@ TOOL_FUNCTIONS = {
     "buscar_noticias": buscar_noticias,
     "consultar_gym": consultar_gym,
     "consultar_gastos": consultar_gastos,
+    "cotizacion_bolsa": cotizacion_bolsa,
+    "consultar_cartera": consultar_cartera,
+    "convertir_moneda": convertir_moneda,
+    "guardar_nota": guardar_nota,
+    "leer_notas": leer_notas,
+    "borrar_nota": borrar_nota,
 }
 
 

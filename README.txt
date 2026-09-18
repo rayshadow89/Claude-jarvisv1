@@ -16,7 +16,7 @@ baraja para que sepas dónde estás antes de leer la palabra.
   ♥  JOKER        el chat con la IA                 ->  /
   ♠  J0KER GYM    entrenamiento y nutrición         ->  /gym
   ♦  J0KER GASTOS tu dinero, repartido              ->  /gastos
-  ♣  INVERSIONES  de momento, solo el escenario     ->  /inversiones
+  ♣  INVERSIONES  tu cartera, cifrada               ->  /inversiones
 
 Se puede usar de dos formas:
   - Desde una página web con interfaz de chat  ->  python app.py
@@ -194,6 +194,28 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
     palos.
 
 
+18. J0KER INVERSIONES de verdad (inversiones.py + /inversiones). Apuntas
+    dónde tienes metido el dinero y cuánto, y se guarda CIFRADO con una
+    contraseña que eliges tú: AES-256-GCM, con la clave sacada de tu
+    contraseña con scrypt. La contraseña no se guarda en ningún sitio, así
+    que quien coja el portátil no puede leer nada sin escribirla. La página
+    enseña poco a la vista (dónde, cuánto vale, cómo va) y el resto vive
+    detrás de una flechita.
+
+    Arriba, una cinta con índices de bolsa REALES (S&P 500, Nasdaq, DAX,
+    IBEX, EUR/USD, bitcoin), de Stooq, que es gratis y sin clave. Si no hay
+    internet, lo dice: en una página que habla de dinero, una gráfica de
+    adorno sería una mentira.
+
+19. Seis habilidades nuevas para JOKER, que pasa de 7 a 13:
+      cotizacion_bolsa   a cuánto está una acción, un índice o el bitcoin
+      consultar_cartera  qué tienes invertido (solo si la has desbloqueado)
+      convertir_moneda   con los cambios oficiales del BCE
+      guardar_nota       apuntar algo para que no se pierda
+      leer_notas         releerlo, buscando por palabra
+      borrar_nota        quitarlo
+
+
 FICHEROS DEL PROYECTO
 ----------------------
 
@@ -217,6 +239,7 @@ FICHEROS DEL PROYECTO
   gym.py            Todo el cálculo de J0KER GYM.
   gastos.py         Todo el cálculo de J0KER GASTOS: reglas de reparto,
                     avisos y el simulador de deudas.
+  inversiones.py    La cartera cifrada y las cotizaciones.
   joker.db          Tus datos del gimnasio Y de tus cuentas. Local, NO se
                     sube a GitHub.
 
@@ -225,6 +248,9 @@ FICHEROS DEL PROYECTO
   static/gastos-graficas.js
                     Las dos gráficas de la sala de gastos, hechas a mano
                     con SVG (sin librerías).
+  static/inversiones.js
+                    Toda la sala de inversiones: el candado, la cartera,
+                    las fichas del mercado y las minigráficas.
 
   joker_gemini.py   La misma idea con Gemini (Google). Referencia: dio
                     problemas de facturación, puede que no funcione ya.
@@ -417,22 +443,82 @@ financiera. Los intereses se calculan de forma simplificada (mensual sobre
 el saldo) y tu banco puede hacerlo distinto.
 
 
-INVERSIONES: LO QUE HAY Y LO QUE NO
--------------------------------------
+J0KER INVERSIONES
+-------------------
 
-En /inversiones. Ahora mismo NO trae ni un dato real, y es a propósito: es
-el sitio preparado para cuando lo traiga.
+En http://127.0.0.1:5000/inversiones (o pulsando ♣ INVERSIONES arriba).
 
-Lo que sí está terminado es la entrada. Al abrirla, la web entera vira de
-burdeos a azul (no es otra hoja de estilos: es la misma, con el color de
-acento apuntando a otro sitio), el halo de luz se va de arriba y aparece
-abajo, y los palos de los laterales se paran y se tumban en dos franjas
-horizontales. Entre esas dos franjas queda el marco donde irán las
-cotizaciones.
+Dos partes que no se mezclan: LO TUYO, que va cifrado, y EL MERCADO, que es
+información pública.
 
-Las minigráficas que ves moverse son inventadas, y no lo disimulan: se
-llaman PICA, CORAZÓN, COMODÍN y demás, no como empresas de verdad, para que
-a nadie se le ocurra leerlas como una cotización.
+
+  TU CARTERA, CIFRADA
+  ---------------------
+  Apuntas dónde tienes metido el dinero: la empresa (o el fondo, o lo que
+  sea), cuántas participaciones, a qué precio las compraste y cuándo. Si le
+  pones el símbolo de bolsa (ITX.ES, AAPL.US...), además te dice lo que vale
+  hoy y cuánto ganas o pierdes.
+
+  La primera vez eliges una contraseña. A partir de ahí:
+
+    - De tu contraseña se saca una clave con scrypt, que está hecho a
+      propósito para ser LENTO (unos 100 ms). Probar contraseñas a lo bruto
+      sale carísimo.
+    - Con esa clave se cifra con AES-256-GCM. Además de ocultar lo que hay,
+      detecta si alguien ha tocado un solo byte del fichero.
+    - La contraseña NO se guarda. Ni en disco, ni en la cookie del
+      navegador, ni en internet. Mientras usas la página vive en la memoria
+      del servidor, y se olvida sola a los 30 minutos sin tocar nada o al
+      cerrar el servidor.
+
+  Puedes comprobarlo tú: abre joker.db con cualquier programa y busca el
+  nombre de tus empresas. No está. Lo que hay son bytes sin sentido.
+
+  >>> SI OLVIDAS LA CONTRASEÑA, LOS DATOS SE PIERDEN. <<<
+
+  No hay "he olvidado mi contraseña", y no es un descuido: si lo hubiera,
+  también lo tendría quien cogiese tu portátil. Apúntala donde no se pierda.
+
+  Lo que esto SÍ protege: que alguien encienda tu ordenador, abra JOKER y
+  vea dónde tienes el dinero. O que se lleve el fichero joker.db.
+  Lo que NO protege: si alguien te instala un programa espía que lee lo que
+  escribes, la contraseña se la das tú al teclearla. Ningún cifrado arregla
+  eso.
+
+
+  POCO A LA VISTA, TODO A UN CLIC
+  ---------------------------------
+  Cada posición enseña tres cosas y nada más: dónde está, cuánto vale y cómo
+  va. La FLECHITA de la derecha despliega el resto: cuántas participaciones,
+  a qué precio compraste, cuánto vale hoy, la gráfica de su histórico y los
+  botones para editarla o quitarla.
+
+  Es a propósito. Con quince números por línea no se entiende nada; con tres
+  se ve la cartera entera de un vistazo y bajas al detalle solo donde te
+  interesa.
+
+
+  EL MERCADO
+  ------------
+  La cinta de arriba trae índices de verdad: S&P 500, Nasdaq 100, DAX,
+  IBEX 35, EUR/USD y bitcoin. Salen de Stooq: gratis, sin registro y sin
+  clave, que es la condición de todo este proyecto.
+
+  A cambio, los precios llegan CON RETRASO y no cubre todos los mercados.
+  Sirven para mirar cómo va lo tuyo, no para operar al segundo, y la página
+  lo dice en vez de parecer un terminal de bolsa.
+
+  Si no hay internet, sale un aviso diciéndolo. Nunca verás una cifra
+  inventada: en una página que habla de tu dinero, un número de adorno es
+  peor que un hueco.
+
+
+  LO QUE NO HACE
+  ----------------
+  No te dice qué comprar ni qué vender. Te enseña tus números y te señala lo
+  que se ve en ellos: si tienes el 60% en una sola cosa, te lo dice con el
+  60% por delante. Eso no es asesoramiento financiero, y JOKER tiene orden de
+  no dárselo por el chat tampoco.
 
 
 LAS LIMITACIONES, SIN SABER CUÁL MARCAR
@@ -456,19 +542,38 @@ JOKER TAMBIÉN LO CONOCE
 -------------------------
 
 Puedes preguntarle por el chat "¿qué me toca entrenar hoy?", "¿cuántas
-calorías tengo que comer?", "¿cuánto llevo gastado este mes?" o "¿puedo
-permitirme esto?" y te lo lee de tu plan y de tus cuentas, sin inventarse
-nada.
+calorías tengo que comer?", "¿cuánto llevo gastado este mes?", "¿puedo
+permitirme esto?" o "¿cómo va mi cartera?" y te lo lee de tu plan, de tus
+cuentas y de tus inversiones, sin inventarse nada.
+
+La cartera solo la puede leer si la has desbloqueado en la página. Si está
+cerrada, te lo dice y te manda a desbloquearla; tiene orden de NO pedirte la
+contraseña por el chat, y de avisarte si la escribes por error.
+
+También tiene una LIBRETA. "Apúntame que el lunes toca ITV" y se guarda;
+"¿qué tenía apuntado del coche?" y te lo lee. Se guarda en tu ordenador, en
+la misma base local que lo demás.
 
 
 DÓNDE SE GUARDAN TUS DATOS
 ----------------------------
 
-En joker.db, un fichero local en tu carpeta del proyecto: tanto lo del
-gimnasio (peso, rutina, días hechos) como tus cuentas (sueldo, gastos,
-deudas). NO se sube a GitHub (está en el .gitignore). Son tuyos y se quedan
-en tu ordenador: lo de salud y lo de dinero son justo las dos cosas que no
-tienen por qué salir de ahí.
+En joker.db, un fichero local en tu carpeta del proyecto: lo del gimnasio
+(peso, rutina, días hechos), tus cuentas (sueldo, gastos, deudas), tu
+libreta de notas y tu cartera de inversiones. NO se sube a GitHub (está en
+el .gitignore). Son tuyos y se quedan en tu ordenador: lo de salud y lo de
+dinero son justo las dos cosas que no tienen por qué salir de ahí.
+
+Dentro de ese fichero hay una diferencia importante:
+
+  EN CLARO   el gimnasio, los gastos y las notas. Si alguien abre joker.db,
+             los ve. Están en tu ordenador y basta con eso.
+  CIFRADA    la cartera de inversiones. Ni abriendo el fichero se lee nada
+             sin tu contraseña.
+
+Es una decisión, no un descuido: cifrarlo todo obligaría a escribir la
+contraseña para mirar cuántas series tocan hoy, y nadie aguanta eso. Se cifra
+lo que de verdad importa que nadie vea.
 
 AVISO: los cálculos son orientativos, con fórmulas estándar (Mifflin-St
 Jeor). No son consejo médico.
@@ -553,7 +658,23 @@ Hay DOS tools de buscar, y cada una sirve para una cosa distinta:
     detalles del artículo, porque no lo ha leído. Es peor un resumen
     inventado que un titular escueto.
 
-Las dos son gratis y no piden ninguna clave, que es la condición de todo
+Y además sabe:
+
+  cotizacion_bolsa    a cuánto está una acción, un índice o el bitcoin
+                      ("¿cómo va el IBEX?")            -> Stooq, gratis
+  convertir_moneda    cambios oficiales del BCE
+                      ("¿cuánto son 250 dólares?")     -> Frankfurter, gratis
+  consultar_gym       tu rutina y tus calorías         -> local
+  consultar_gastos    tu presupuesto y tus deudas      -> local
+  consultar_cartera   tus inversiones (si está abierta)-> local y cifrada
+  guardar_nota        apuntar algo
+  leer_notas          releerlo                          -> local
+  borrar_nota         quitarlo
+  get_datetime        la hora en cualquier sitio        -> Open-Meteo, gratis
+  get_weather         el tiempo                         -> Open-Meteo, gratis
+  calculate           matemáticas                       -> sin internet
+
+Todas son gratis y no piden ninguna clave, que es la condición de todo
 este proyecto. Si algún día quieres un buscador de verdad (páginas enteras,
 no titulares), se puede añadir con Tavily o Serper: tienen capa gratuita,
 pero piden registro.
