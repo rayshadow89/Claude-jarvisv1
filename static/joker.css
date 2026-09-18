@@ -44,6 +44,16 @@
   --azul-oscuro:    #0d314a;
   --azul-texto:     #a6d2ef;
 
+  /* Sube y baja. Son colores de ESTADO, no de la paleta de la casa, y van
+     siempre acompañados del número con su signo (+2,4% / -1,8%): el color
+     nunca es lo único que distingue una subida de una bajada, que es el
+     problema clásico del rojo y el verde.
+     Comprobados contra el fondo oscuro y contra el azul de inversiones, que
+     es la única sala donde se usan. Junto al burdeos NO valdrían: el rojo y
+     el burdeos se parecen demasiado. */
+  --verde-vivo:     #199e70;
+  --rojo-vivo:      #e66767;
+
   /* El color de la página. Por defecto, la casa. */
   --acento:         var(--burdeos);
   --acento-claro:   var(--burdeos-claro);
@@ -139,8 +149,13 @@ h1 {
   background: rgba(var(--acento-rgb), 0.14); transform: translateY(-1px); }
 .sala:active { transform: translateY(0); }
 .sala .palo-sala { font-size: 0.95rem; line-height: 1; opacity: 0.75; }
+/* La sala en la que estás: además del fondo, un halo tenue del color de la
+   casa. Es la diferencia entre "creo que estoy aquí" y saberlo. */
 .sala.aqui { border-color: var(--acento); color: #fff;
-  background: rgba(var(--acento-rgb), 0.22); }
+  background: rgba(var(--acento-rgb), 0.22);
+  box-shadow: 0 0 0 1px rgba(var(--acento-rgb), 0.35),
+              0 3px 16px rgba(var(--acento-rgb), 0.28); }
+.sala.aqui:hover { transform: none; }
 .sala.aqui .palo-sala { opacity: 1; }
 .sala.roja .palo-sala  { color: var(--burdeos-vivo); }
 .sala.verde .palo-sala { color: var(--azul-vivo); }
@@ -166,7 +181,15 @@ h2[data-palo]::before {
 .tarjeta {
   background: var(--negro-carta); border: 1px solid var(--borde);
   border-radius: 12px; padding: 18px;
-  transition: background-color 1.1s ease, border-color 1.1s ease;
+  transition: background-color 1.1s ease, border-color .25s ease,
+              box-shadow .25s ease;
+}
+/* Al pasar por encima, la carta se despega un poco del tapete. Sin moverse:
+   solo el borde y una sombra, que es suficiente para que parezca viva y no
+   marea al leer. */
+.tarjeta:hover {
+  border-color: rgba(var(--acento-rgb), 0.55);
+  box-shadow: 0 5px 24px rgba(0, 0, 0, 0.32);
 }
 
 /* El dorso de una carta: para los huecos y lo que está de descanso. */
