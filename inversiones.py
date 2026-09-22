@@ -280,14 +280,29 @@ def normalizar_cartera(cartera: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Las cotizaciones
 # ---------------------------------------------------------------------------
-# Stooq: CSV, gratis, sin registro y sin clave. Los símbolos llevan sufijo de
-# mercado: aapl.us, itx.es, ^spx (índices), eurusd (divisas), btc.v (cripto).
+# DOS fuentes, las dos gratis y sin clave, y se prueban en orden:
+#
+#   1. Yahoo Finance. Devuelve precio e histórico en una sola llamada, en
+#      JSON, y cubre bolsa, índices, divisas y cripto.
+#   2. Stooq, en CSV. Es la reserva por si Yahoo cambia o bloquea.
+#
+# Y las dos se piden con cabeceras de navegador. No es por disimular: es que
+# ambas rechazan o limitan a los clientes que no las mandan, y esa fue la
+# razón de que la cinta del mercado saliera vacía.
 
+YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/"
 STOOQ_ULTIMO = "https://stooq.com/q/l/"
 STOOQ_HISTORICO = "https://stooq.com/q/d/l/"
 
-# Las cotizaciones no cambian cada segundo y Stooq es un servicio gratuito:
-# guardamos lo pedido un rato para no machacarlo ni hacer esperar al usuario.
+CABECERAS = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"),
+    "Accept": "application/json,text/csv,text/plain,*/*",
+    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+}
+
+# Las cotizaciones no cambian cada segundo y estas fuentes son gratuitas:
+# guardamos lo pedido un rato para no machacarlas ni hacer esperar al usuario.
 _CACHE: dict[str, tuple] = {}
 SEGUNDOS_CACHE = 300
 
@@ -304,6 +319,128 @@ def _a_cache(clave: str, valor):
     return valor
 
 
+# Los símbolos que escribe la gente frente a los que entiende Yahoo. Se acepta
+# la forma cómoda (ITX.ES) y también la de Yahoo directamente (ITX.MC), para no
+# obligar a nadie a aprenderse una tabla.
+SUFIJOS_YAHOO = {
+    ".US": "", ".ES": ".MC", ".UK": ".L", ".DE": ".DE", ".FR": ".PA",
+    ".IT": ".MI", ".PT": ".LS", ".NL": ".AS", ".JP": ".T",
+}
+INDICES_YAHOO = {
+    "^SPX": "^GSPC", "^NDQ": "^NDX", "^DJI": "^DJI", "^DAX": "^GDAXI",
+    "^IBEX": "^IBEX", "^CAC": "^FCHI", "^FTM": "^FTSE", "^NKX": "^N225",
+}
+
+
+def _a_yahoo(simbolo: str) -> str:
+    """Traduce el símbolo cómodo al que entiende Yahoo."""
+    s = (simbolo or "").strip().upper()
+    if not s:
+        return ""
+
+    if s in INDICES_YAHOO:
+        return INDICES_YAHOO[s]
+    if s.startswith("^"):
+        return s                      # otro índice: se manda tal cual
+
+    # Divisas: EURUSD -> EURUSD=X (seis letras, sin punto y sin guion)
+    if len(s) == 6 and s.isalpha() and "." not in s:
+        if s.endswith("USD") and s[:3] in ("BTC", "ETH", "XRP", "ADA", "SOL", "DOT"):
+            return f"{s[:3]}-USD"
+        return f"{s}=X"
+
+    for sufijo, yahoo in SUFIJOS_YAHOO.items():
+        if s.endswith(sufijo):
+            return s[: -len(sufijo)] + yahoo
+
+    return s                          # ya viene en formato Yahoo (ITX.MC, BTC-USD...)
+
+
+def analizar_yahoo(datos: dict) -> dict | None:
+    """
+    Saca cotización e histórico del JSON de Yahoo.
+
+    Separado de la descarga, como el resto, para poder probarlo sin internet.
+    """
+    from datetime import datetime, timezone
+
+    try:
+        resultado = (datos.get("chart") or {}).get("result") or []
+        if not resultado:
+            return None
+        bloque = resultado[0]
+        meta = bloque.get("meta") or {}
+    except AttributeError:
+        return None
+
+    precio = meta.get("regularMarketPrice")
+    if precio is None:
+        return None
+
+    anterior = meta.get("chartPreviousClose") or meta.get("previousClose")
+    variacion = None
+    if anterior:
+        variacion = round((precio - anterior) / anterior * 100, 2)
+
+    momento = meta.get("regularMarketTime")
+    fecha = hora = ""
+    if momento:
+        try:
+            t = datetime.fromtimestamp(momento, tz=timezone.utc)
+            fecha, hora = t.strftime("%Y-%m-%d"), t.strftime("%H:%M")
+        except (OSError, OverflowError, ValueError):
+            pass
+
+    # El histórico viene en dos listas paralelas: marcas de tiempo y cierres
+    puntos = []
+    marcas = bloque.get("timestamp") or []
+    cierres = (((bloque.get("indicators") or {}).get("quote") or [{}])[0]
+               .get("close") or [])
+    for marca, cierre in zip(marcas, cierres):
+        if cierre is None:            # Yahoo mete huecos en los días sin sesión
+            continue
+        try:
+            dia = datetime.fromtimestamp(marca, tz=timezone.utc).strftime("%Y-%m-%d")
+        except (OSError, OverflowError, ValueError):
+            continue
+        puntos.append({"fecha": dia, "cierre": round(float(cierre), 4)})
+
+    return {
+        "cotizacion": {
+            "simbolo": str(meta.get("symbol", "")).upper(),
+            "precio": round(float(precio), 4),
+            "apertura": meta.get("regularMarketOpen"),
+            "maximo": meta.get("regularMarketDayHigh"),
+            "minimo": meta.get("regularMarketDayLow"),
+            "volumen": meta.get("regularMarketVolume"),
+            "moneda": meta.get("currency", ""),
+            "fecha": fecha,
+            "hora": hora,
+            "variacion_dia": variacion,
+            "fuente": "Yahoo Finance",
+        },
+        "historico": puntos,
+    }
+
+
+def _pedir_yahoo(simbolo: str, rango: str = "3mo") -> dict | None:
+    import requests
+
+    destino = _a_yahoo(simbolo)
+    if not destino:
+        return None
+
+    try:
+        r = requests.get(YAHOO + requests.utils.quote(destino),
+                         params={"interval": "1d", "range": rango},
+                         timeout=12, headers=CABECERAS)
+        if r.status_code != 200:
+            return None
+        return analizar_yahoo(r.json())
+    except (requests.RequestException, ValueError):
+        return None
+
+
 def _numero(texto: str):
     """Stooq escribe 'N/D' cuando no tiene el dato. Eso no es un cero."""
     try:
@@ -314,12 +451,7 @@ def _numero(texto: str):
 
 
 def analizar_cotizacion(csv_texto: str) -> dict | None:
-    """
-    Saca la cotización del CSV de Stooq.
-
-    Separado de la descarga para poder probarlo sin internet, igual que se
-    hizo con las noticias.
-    """
+    """Saca la cotización del CSV de Stooq (la fuente de reserva)."""
     lineas = [l.strip() for l in csv_texto.strip().split("\n") if l.strip()]
     if len(lineas) < 2:
         return None
@@ -346,14 +478,16 @@ def analizar_cotizacion(csv_texto: str) -> dict | None:
         "maximo": _numero(fila.get("high")),
         "minimo": _numero(fila.get("low")),
         "volumen": _numero(fila.get("volume")),
+        "moneda": "",
         "fecha": fila.get("date", ""),
         "hora": fila.get("time", ""),
         "variacion_dia": variacion,
+        "fuente": "Stooq",
     }
 
 
 def analizar_historico(csv_texto: str, dias: int = 60) -> list:
-    """Los últimos cierres, para pintar la línea. CSV: Date,Open,High,Low,Close,Volume."""
+    """Los últimos cierres del CSV de Stooq. Date,Open,High,Low,Close,Volume."""
     lineas = [l.strip() for l in csv_texto.strip().split("\n") if l.strip()]
     if len(lineas) < 2:
         return []
@@ -377,46 +511,118 @@ def analizar_historico(csv_texto: str, dias: int = 60) -> list:
     return puntos[-dias:]
 
 
-def cotizacion(simbolo: str) -> dict | None:
-    """El último precio de un símbolo. None si no se puede saber."""
-    simbolo = (simbolo or "").strip().lower()
-    if not simbolo:
-        return None
-
-    guardado = _de_cache("c:" + simbolo)
-    if guardado is not None:
-        return guardado
-
+def _pedir_stooq(simbolo: str) -> dict | None:
     import requests
+
+    s = (simbolo or "").strip().lower()
+    if not s:
+        return None
     try:
         r = requests.get(STOOQ_ULTIMO,
-                         params={"s": simbolo, "f": "sd2t2ohlcv", "h": "", "e": "csv"},
-                         timeout=10, headers={"User-Agent": "JOKER-v1-proyecto-personal"})
+                         params={"s": s, "f": "sd2t2ohlcv", "h": "", "e": "csv"},
+                         timeout=10, headers=CABECERAS)
         r.raise_for_status()
     except requests.RequestException:
         return None
 
-    return _a_cache("c:" + simbolo, analizar_cotizacion(r.text))
+    dato = analizar_cotizacion(r.text)
+    return {"cotizacion": dato, "historico": []} if dato else None
+
+
+def _consultar(simbolo: str, rango: str = "3mo") -> dict | None:
+    """
+    Pregunta el precio a las fuentes, en orden, y se queda con la primera que
+    responda. Lo guarda un rato: las cotizaciones no cambian cada segundo y
+    estas fuentes son gratuitas, así que no hay que machacarlas.
+    """
+    simbolo = (simbolo or "").strip()
+    if not simbolo:
+        return None
+
+    clave = f"q:{simbolo.lower()}:{rango}"
+    guardado = _de_cache(clave)
+    if guardado is not None:
+        return guardado
+
+    for fuente in (lambda: _pedir_yahoo(simbolo, rango), lambda: _pedir_stooq(simbolo)):
+        datos = fuente()
+        if datos and datos.get("cotizacion"):
+            return _a_cache(clave, datos)
+
+    return _a_cache(clave, None)
+
+
+def cotizacion(simbolo: str) -> dict | None:
+    """El último precio de un símbolo. None si ninguna fuente lo sabe."""
+    datos = _consultar(simbolo)
+    return datos["cotizacion"] if datos else None
 
 
 def historico(simbolo: str, dias: int = 60) -> list:
-    simbolo = (simbolo or "").strip().lower()
-    if not simbolo:
-        return []
+    """Los últimos cierres, para pintar la línea."""
+    rango = "1mo" if dias <= 31 else ("3mo" if dias <= 92 else "1y")
+    datos = _consultar(simbolo, rango)
+    if datos and datos.get("historico"):
+        return datos["historico"][-dias:]
 
-    guardado = _de_cache(f"h:{simbolo}:{dias}")
-    if guardado is not None:
-        return guardado
-
+    # Yahoo no lo tenía: probamos el CSV histórico de Stooq
     import requests
     try:
-        r = requests.get(STOOQ_HISTORICO, params={"s": simbolo, "i": "d"},
-                         timeout=12, headers={"User-Agent": "JOKER-v1-proyecto-personal"})
+        r = requests.get(STOOQ_HISTORICO, params={"s": simbolo.strip().lower(), "i": "d"},
+                         timeout=12, headers=CABECERAS)
         r.raise_for_status()
     except requests.RequestException:
         return []
+    return analizar_historico(r.text, dias)
 
-    return _a_cache(f"h:{simbolo}:{dias}", analizar_historico(r.text, dias))
+
+def diagnostico() -> dict:
+    """
+    Qué pasa exactamente al pedir un precio, fuente por fuente.
+
+    Existe porque "la cinta sale vacía" no dice nada de por qué: puede ser que
+    no haya internet, que una fuente haya cambiado, o que el símbolo esté mal.
+    Esto lo separa, y así se arregla lo que toca en vez de ir a ciegas.
+    """
+    import requests
+
+    prueba = "AAPL.US"
+    salida = {"simbolo_probado": prueba, "traducido_a_yahoo": _a_yahoo(prueba),
+              "fuentes": []}
+
+    try:
+        r = requests.get(YAHOO + _a_yahoo(prueba),
+                         params={"interval": "1d", "range": "5d"},
+                         timeout=12, headers=CABECERAS)
+        analizado = analizar_yahoo(r.json()) if r.status_code == 200 else None
+        salida["fuentes"].append({
+            "nombre": "Yahoo Finance", "codigo": r.status_code,
+            "bytes": len(r.content),
+            "precio": (analizado or {}).get("cotizacion", {}).get("precio"),
+            "ok": bool(analizado),
+            "detalle": r.text[:160] if not analizado else "",
+        })
+    except Exception as e:
+        salida["fuentes"].append({"nombre": "Yahoo Finance", "ok": False,
+                                  "detalle": f"{type(e).__name__}: {e}"[:200]})
+
+    try:
+        r = requests.get(STOOQ_ULTIMO,
+                         params={"s": prueba.lower(), "f": "sd2t2ohlcv", "h": "", "e": "csv"},
+                         timeout=10, headers=CABECERAS)
+        analizado = analizar_cotizacion(r.text)
+        salida["fuentes"].append({
+            "nombre": "Stooq", "codigo": r.status_code, "bytes": len(r.content),
+            "precio": (analizado or {}).get("precio"),
+            "ok": bool(analizado),
+            "detalle": r.text[:160] if not analizado else "",
+        })
+    except Exception as e:
+        salida["fuentes"].append({"nombre": "Stooq", "ok": False,
+                                  "detalle": f"{type(e).__name__}: {e}"[:200]})
+
+    salida["hay_internet"] = any(f.get("codigo") for f in salida["fuentes"])
+    return salida
 
 
 # Lo que se enseña arriba aunque no tengas cartera: cómo va el mercado hoy.

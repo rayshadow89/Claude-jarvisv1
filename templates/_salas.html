@@ -4,6 +4,7 @@
   Cada sala lleva su palo de la baraja, y no por decorar: el palo se reconoce
   antes que la palabra, así que de un vistazo sabes dónde estás.
 
+      🃏 MESA         el resumen de todo, la carta que manda
       ♥  JOKER        el chat, el corazón de todo
       ♠  GYM          picas, que es la espada: la fuerza
       ♦  GASTOS       diamantes, que siempre fueron el dinero
@@ -13,6 +14,9 @@
       {% with sala='gym' %}{% include '_salas.html' %}{% endwith %}
 #}
 <nav class="salas" aria-label="Secciones de JOKER">
+  <a href="/mesa" class="sala mesa {{ 'aqui' if sala == 'mesa' }}"
+     {% if sala == 'mesa' %}aria-current="page"{% endif %}>
+    <span class="palo-sala" aria-hidden="true">&#127183;</span>MESA</a>
   <a href="/" class="sala roja {{ 'aqui' if sala == 'chat' }}"
      {% if sala == 'chat' %}aria-current="page"{% endif %}>
     <span class="palo-sala" aria-hidden="true">&hearts;</span>JOKER</a>

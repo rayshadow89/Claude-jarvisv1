@@ -343,6 +343,47 @@
   }
   .microfono.avisando .globito-mic { opacity: 1; transform: translateY(0); }
 
+  /* Escuchando: el botón se enciende y late, para que no haya duda de que el
+     micro está abierto. Un micrófono que graba sin avisar es de mala educación. */
+  .microfono.escuchando {
+    background: linear-gradient(145deg, var(--burdeos-claro), var(--burdeos));
+    border-color: transparent; color: #fff;
+  }
+  .microfono.escuchando::after {
+    content: ''; position: absolute; inset: -1px; border-radius: 10px;
+    border: 2px solid var(--burdeos-vivo);
+    animation: latido-mic 1.4s ease-out infinite;
+  }
+  @keyframes latido-mic {
+    0%   { transform: scale(1);    opacity: 0.9; }
+    100% { transform: scale(1.35); opacity: 0; }
+  }
+  .microfono.no-puede { opacity: 0.45; cursor: not-allowed; }
+
+  /* ---------- El botón de voz ---------- */
+  .voz {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--negro-carta); border: 1px solid var(--borde);
+    color: var(--texto-suave); font-family: inherit; font-size: 0.75rem;
+    padding: 6px 12px; border-radius: 18px; cursor: pointer;
+    transition: all 0.18s ease; margin-right: 6px;
+  }
+  .voz:hover { border-color: var(--burdeos); color: var(--texto); }
+  .voz .icono-voz { width: 14px; height: 14px; fill: currentColor; }
+  /* Apagado, el altavoz no tiene ondas: se ve de un vistazo que está en silencio */
+  .voz[aria-pressed="false"] .onda1,
+  .voz[aria-pressed="false"] .onda2 { opacity: 0; }
+  .voz[aria-pressed="true"] {
+    background: linear-gradient(145deg, var(--burdeos), var(--burdeos-oscuro));
+    border-color: var(--burdeos-claro); color: #fff;
+  }
+  .voz.hablando .onda2 { animation: onda 1.1s ease-in-out infinite; }
+  @keyframes onda {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.25; }
+  }
+  .voz.no-puede { display: none; }
+
   .pie {
     text-align: center;
     font-size: 0.72rem;
@@ -535,20 +576,17 @@
   <div class="barra">
     <div class="campo">
       <textarea id="entrada" rows="1" placeholder="Escribe tu mensaje..." autofocus></textarea>
-      <!-- El micrófono todavía NO graba nada: está puesto para que el sitio
-           exista cuando toque conectarlo. Al pulsarlo lo dice él mismo, en
-           vez de quedarse mudo y parecer que está roto. -->
+      <!-- El micrófono usa el reconocimiento de voz del propio navegador: no
+           manda tu voz a ningún servidor nuestro ni cuesta nada. Si el
+           navegador no lo trae (Firefox, por ejemplo), el botón lo dice. -->
       <button class="microfono" id="microfono" type="button"
-              title="Hablar con JOKER (todavía no funciona)"
-              aria-label="Hablar con JOKER: todavía no está disponible">
+              title="Hablar con JOKER"
+              aria-label="Dictar un mensaje con la voz">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
           <path d="M17 11a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/>
         </svg>
-        <span class="globito-mic" id="globito-mic" role="status">
-          Todavía no puedo escucharte. El botón está puesto para cuando le
-          toque; de momento, escríbeme.
-        </span>
+        <span class="globito-mic" id="globito-mic" role="status"></span>
       </button>
       <button class="enviar" id="enviar" title="Enviar">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -560,6 +598,17 @@
          que afecte de verdad (memoria, modelo...), el nivel elegido está en la
          variable `nivelActual` del script y basta con mandarlo a /api/chat. -->
     <div class="potencia">
+      <!-- Que JOKER conteste en voz alta. Usa la voz del sistema, así que no
+           cuesta nada y funciona sin internet. -->
+      <button class="voz" id="voz" type="button" aria-pressed="false"
+              title="Que JOKER lea sus respuestas en voz alta">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icono-voz">
+          <path d="M3 9v6h4l5 5V4L7 9H3z"/>
+          <path class="onda1" d="M16.5 12a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/>
+          <path class="onda2" d="M14 2.2v2.1c3.4.9 6 4 6 7.7s-2.6 6.8-6 7.7v2.1c4.6-.9 8-5 8-9.8s-3.4-8.9-8-9.8z"/>
+        </svg>
+        <span id="voz-texto">Voz</span>
+      </button>
       <span class="potencia-titulo">Potencia</span>
       <div class="potencia-opciones" id="potencia" role="group" aria-label="Nivel de potencia">
         <button class="nivel" data-nivel="bajo"  aria-pressed="false">Bajo</button>
@@ -712,19 +761,157 @@
 
   btnEnviar.addEventListener('click', enviar);
 
-  // ---------- El micrófono (de momento, solo el gesto) ----------
-  // Cuando llegue el turno de que funcione, aquí es donde entra la API de
-  // reconocimiento de voz del navegador. Hasta entonces, al menos contesta.
+  // ====================================================================
+  // HABLARLE A JOKER
+  // ====================================================================
+  // El reconocimiento de voz lo hace el propio navegador (SpeechRecognition).
+  // No pasa por nuestro servidor, no cuesta nada y no necesita clave. A
+  // cambio, no todos los navegadores lo traen: Chrome y Edge sí, Firefox no.
+  // Si no está, el botón se apaga y lo dice, en vez de no hacer nada.
+
   const btnMic = document.getElementById('microfono');
+  const globitoMic = document.getElementById('globito-mic');
+  const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  let oyente = null;
+  let escuchando = false;
   let avisoMic = null;
-  btnMic.addEventListener('click', () => {
-    btnMic.classList.remove('intentando');
-    void btnMic.offsetWidth;          // reinicia la animación si repites
-    btnMic.classList.add('intentando', 'avisando');
+
+  function decirMic(texto, milis) {
+    globitoMic.textContent = texto;
+    btnMic.classList.add('avisando');
     clearTimeout(avisoMic);
-    avisoMic = setTimeout(() => btnMic.classList.remove('avisando'), 3200);
-    entrada.focus();
-  });
+    avisoMic = setTimeout(() => btnMic.classList.remove('avisando'), milis || 3200);
+  }
+
+  function pararDeEscuchar() {
+    escuchando = false;
+    btnMic.classList.remove('escuchando');
+    btnMic.title = 'Hablar con JOKER';
+  }
+
+  if (!Reconocimiento) {
+    btnMic.classList.add('no-puede');
+    btnMic.title = 'Tu navegador no sabe escuchar';
+    btnMic.addEventListener('click', () => decirMic(
+      'Tu navegador no trae reconocimiento de voz. En Chrome o Edge sí funciona.', 4200));
+  } else {
+    oyente = new Reconocimiento();
+    oyente.lang = 'es-ES';
+    oyente.continuous = false;
+    oyente.interimResults = true;   // va escribiendo mientras hablas
+
+    let yaEscrito = '';
+
+    oyente.addEventListener('start', () => {
+      escuchando = true;
+      yaEscrito = entrada.value ? entrada.value.trimEnd() + ' ' : '';
+      btnMic.classList.add('escuchando');
+      btnMic.title = 'Pulsa para dejar de escuchar';
+      decirMic('Te escucho. Habla, y pulsa otra vez para parar.', 2600);
+    });
+
+    oyente.addEventListener('result', (e) => {
+      let texto = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        texto += e.results[i][0].transcript;
+      }
+      entrada.value = yaEscrito + texto;
+      entrada.dispatchEvent(new Event('input'));   // que la caja crezca sola
+    });
+
+    oyente.addEventListener('error', (e) => {
+      pararDeEscuchar();
+      const motivos = {
+        'not-allowed': 'No me has dado permiso para el micrófono. Está en el '
+                     + 'candado de la barra de direcciones.',
+        'service-not-allowed': 'El navegador no me deja usar el micrófono aquí.',
+        'no-speech': 'No te he oído. Prueba otra vez.',
+        'audio-capture': 'No encuentro ningún micrófono conectado.',
+        'network': 'El reconocimiento de voz necesita internet y no lo tengo.',
+      };
+      decirMic(motivos[e.error] || `No he podido escuchar (${e.error}).`, 4600);
+    });
+
+    oyente.addEventListener('end', () => {
+      pararDeEscuchar();
+      entrada.focus();
+    });
+
+    btnMic.addEventListener('click', () => {
+      if (escuchando) { oyente.stop(); return; }
+      try {
+        oyente.start();
+      } catch (e) {
+        // start() protesta si ya estaba arrancando; no es un fallo real
+        pararDeEscuchar();
+      }
+    });
+  }
+
+  // ====================================================================
+  // QUE JOKER CONTESTE EN VOZ ALTA
+  // ====================================================================
+  // La voz también es del sistema (speechSynthesis): gratis, sin internet y
+  // sin mandar el texto a ningún sitio. Se recuerda si lo dejaste encendido.
+
+  const CLAVE_VOZ = 'joker-voz';
+  const btnVoz = document.getElementById('voz');
+  const hayVoz = 'speechSynthesis' in window;
+  let vozActiva = false;
+
+  function vozEspanola() {
+    const voces = window.speechSynthesis.getVoices();
+    return voces.find(v => v.lang === 'es-ES')
+        || voces.find(v => v.lang && v.lang.startsWith('es'))
+        || null;
+  }
+
+  function leerEnVoz(texto) {
+    if (!vozActiva || !hayVoz || !texto) return;
+    window.speechSynthesis.cancel();
+
+    // Los bloques de código no se leen: escuchar llaves y paréntesis uno a uno
+    // no le sirve a nadie.
+    const limpio = texto
+      .replace(/```[\s\S]*?```/g, ' (aquí va un trozo de código) ')
+      .replace(/[*_`#>]/g, '')
+      .trim();
+    if (!limpio) return;
+
+    const frase = new SpeechSynthesisUtterance(limpio);
+    const voz = vozEspanola();
+    if (voz) frase.voice = voz;
+    frase.lang = 'es-ES';
+    frase.rate = 1.03;
+    frase.addEventListener('start', () => btnVoz.classList.add('hablando'));
+    frase.addEventListener('end', () => btnVoz.classList.remove('hablando'));
+    frase.addEventListener('error', () => btnVoz.classList.remove('hablando'));
+    window.speechSynthesis.speak(frase);
+  }
+
+  function ponerVoz(activa) {
+    vozActiva = activa;
+    btnVoz.setAttribute('aria-pressed', activa ? 'true' : 'false');
+    document.getElementById('voz-texto').textContent = activa ? 'Voz' : 'Voz';
+    btnVoz.title = activa
+      ? 'JOKER lee sus respuestas. Pulsa para callarlo.'
+      : 'Que JOKER lea sus respuestas en voz alta';
+    if (!activa && hayVoz) {
+      window.speechSynthesis.cancel();
+      btnVoz.classList.remove('hablando');
+    }
+    try { localStorage.setItem(CLAVE_VOZ, activa ? '1' : '0'); } catch (e) {}
+  }
+
+  if (!hayVoz) {
+    btnVoz.classList.add('no-puede');
+  } else {
+    btnVoz.addEventListener('click', () => ponerVoz(!vozActiva));
+    try { ponerVoz(localStorage.getItem(CLAVE_VOZ) === '1'); } catch (e) { ponerVoz(false); }
+    // Algunos navegadores tardan en tener la lista de voces
+    window.speechSynthesis.addEventListener?.('voiceschanged', () => {});
+  }
 
   document.querySelectorAll('.ejemplo').forEach(b => {
     b.addEventListener('click', () => {
@@ -814,6 +1001,7 @@
         añadirMensaje(datos.error, 'error', null);
       } else {
         añadirMensaje(datos.respuesta, 'joker', 'JOKER');
+        leerEnVoz(datos.respuesta);   // solo si has encendido la voz
       }
     } catch (e) {
       quitarPensando();

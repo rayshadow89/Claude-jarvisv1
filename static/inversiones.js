@@ -83,18 +83,27 @@ async function pintarMercado() {
   const conDato = indices.filter(i => i.hay_dato);
 
   // Si no hay ni un dato, no se enseña una cinta vacía dando vueltas: se dice
-  // lo que pasa. Inventar gráficas en una página de dinero sería mentir.
+  // lo que pasa Y se ofrece averiguar por qué, que "no hay datos" a secas no
+  // sirve para arreglar nada.
   if (!conDato.length) {
+    const caja = $('franja-mercado');
+    caja.innerHTML = '';
+
     const aviso = document.createElement('div');
     aviso.className = 'mercado-caido';
-    aviso.textContent = indices.length
-      ? 'No he podido leer las cotizaciones ahora mismo. Puede ser que no haya '
-        + 'internet, o que la fuente (Stooq, gratuita) esté caída. Lo tuyo sigue '
-        + 'guardado igual: esto solo afecta a los precios de hoy.'
-      : 'Sin conexión con el mercado.';
-    $('franja-mercado').classList.add('sin-cinta');
-    $('franja-mercado').innerHTML = '';
-    $('franja-mercado').appendChild(aviso);
+
+    const texto = document.createElement('div');
+    texto.textContent = 'No he podido leer las cotizaciones. Lo tuyo sigue guardado '
+                      + 'igual: esto solo afecta a los precios de hoy.';
+
+    const boton = document.createElement('button');
+    boton.className = 'boton secundario';
+    boton.style.cssText = 'margin-top:10px;padding:7px 16px;font-size:0.78rem';
+    boton.textContent = '¿Por qué?';
+    boton.addEventListener('click', () => diagnosticar(boton));
+
+    aviso.append(texto, boton);
+    caja.appendChild(aviso);
     return;
   }
 
@@ -103,6 +112,58 @@ async function pintarMercado() {
   // Duplicada, para que el bucle encaje al desplazar el 50%
   pista.appendChild(grupo.cloneNode(true));
   pista.appendChild(grupo);
+}
+
+// Qué está fallando exactamente: sin internet, una fuente caída, o un símbolo
+// mal escrito. Son tres problemas distintos con tres arreglos distintos.
+async function diagnosticar(boton) {
+  boton.disabled = true;
+  boton.textContent = 'Preguntando…';
+
+  let d;
+  try {
+    d = await (await fetch('/api/inversiones/diagnostico')).json();
+  } catch (e) {
+    boton.textContent = 'No he podido ni preguntar';
+    return;
+  }
+
+  const caja = document.createElement('div');
+  caja.style.cssText = 'margin-top:14px;text-align:left;max-width:560px;'
+                     + 'margin-left:auto;margin-right:auto;font-size:0.78rem;'
+                     + 'line-height:1.65';
+
+  const titulo = document.createElement('div');
+  titulo.style.cssText = 'color:var(--texto);margin-bottom:8px';
+  titulo.textContent = `Probando con ${d.simbolo_probado} (que en Yahoo es `
+                     + `${d.traducido_a_yahoo}):`;
+  caja.appendChild(titulo);
+
+  for (const f of d.fuentes) {
+    const linea = document.createElement('div');
+    linea.style.cssText = 'padding:3px 0;color:'
+      + (f.ok ? 'var(--verde-vivo)' : 'var(--texto-suave)');
+    const estado = f.ok
+      ? `responde bien (precio ${f.precio})`
+      : (f.codigo ? `contesta ${f.codigo} pero no entiendo lo que manda`
+                  : 'no contesta');
+    linea.textContent = `${f.ok ? '\u2713' : '\u2717'}  ${f.nombre}: ${estado}`;
+    caja.appendChild(linea);
+  }
+
+  const conclusion = document.createElement('div');
+  conclusion.style.cssText = 'margin-top:10px;color:var(--acento-texto)';
+  conclusion.textContent = !d.hay_internet
+    ? 'Ninguna de las dos contesta: lo más probable es que este ordenador no '
+      + 'tenga internet, o que un antivirus o el cortafuegos las esté bloqueando.'
+    : (d.fuentes.some(f => f.ok)
+        ? 'Una fuente sí funciona. Si aun así no ves precios, puede que los '
+          + 'símbolos de tus posiciones estén mal escritos.'
+        : 'Hay internet, pero las dos fuentes contestan algo que no entiendo. '
+          + 'Puede que hayan cambiado. Cuéntamelo y lo miro.');
+  caja.appendChild(conclusion);
+
+  boton.replaceWith(caja);
 }
 
 function fichaMercado(indice) {
