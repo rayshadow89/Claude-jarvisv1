@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JOKER &middot; La mesa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/joker.css">
+<style>
+  /* =====================================================================
+     LA MESA — las cuatro salas de un vistazo
+     =====================================================================
+     Una carta por sala, repartidas como una mano sobre el tapete. Cada una
+     enseña UNA cifra: la que contestarías si te preguntasen por el pasillo
+     "¿cómo lo llevas?". Para el detalle ya están las salas.
+     ===================================================================== */
+
+  body { padding-bottom: 60px; }
+  .mascota { filter: invert(19%) sepia(64%) saturate(2800%) hue-rotate(325deg)
+             brightness(94%) contrast(96%) drop-shadow(0 0 14px rgba(195,48,85,.45)); }
+
+  .saludo { margin: 26px 0 4px; }
+  .saludo .hola {
+    font-family: 'Cinzel', Georgia, serif; font-size: 1.6rem; color: #fff;
+    letter-spacing: 0.04em;
+  }
+  .saludo .dia { font-size: 0.84rem; color: var(--texto-suave); margin-top: 5px; }
+  /* Solo la primera letra. Con text-transform: capitalize salía
+     "Martes, 22 De Septiembre", con la preposición en mayúscula. */
+  .saludo .dia::first-letter { text-transform: uppercase; }
+
+  /* ---------- La mano de cartas ---------- */
+  .mano { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+    gap: 14px; margin-top: 22px; }
+
+  .carta-sala {
+    position: relative; display: flex; flex-direction: column;
+    background: var(--negro-carta); border: 1px solid var(--borde);
+    border-radius: 14px; padding: 20px 20px 18px; min-height: 178px;
+    text-decoration: none; color: inherit; overflow: hidden;
+    transition: transform .26s cubic-bezier(.34,1.2,.64,1),
+                border-color .22s ease, box-shadow .26s ease;
+  }
+  /* Se levanta un poco y se endereza, como una carta que eliges de la mano */
+  .carta-sala:hover {
+    transform: translateY(-5px);
+    border-color: var(--acento);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+  }
+  .carta-sala:active { transform: translateY(-1px); }
+
+  /* El índice de la esquina, como en una carta de verdad */
+  .carta-sala .indice {
+    position: absolute; right: 14px; bottom: 10px; font-size: 54px; line-height: 1;
+    opacity: 0.07; pointer-events: none; transition: opacity .26s ease;
+  }
+  .carta-sala:hover .indice { opacity: 0.14; }
+
+  .carta-sala .nombre {
+    font-family: 'Cinzel', Georgia, serif; font-size: 0.78rem;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--acento-claro); display: flex; align-items: center; gap: 8px;
+  }
+  .carta-sala .nombre .palito { font-size: 0.9rem; opacity: 0.8; }
+
+  .carta-sala .cifra {
+    font-size: 2rem; font-weight: 600; color: #fff; line-height: 1.05;
+    margin-top: 14px;
+  }
+  .carta-sala .cifra.sube { color: var(--verde-vivo); }
+  .carta-sala .cifra.baja { color: var(--rojo-vivo); }
+  .carta-sala .cifra-pie { font-size: 0.7rem; color: #5f6d73;
+    text-transform: uppercase; letter-spacing: 0.08em; margin-top: 3px; }
+
+  .carta-sala .titular { font-size: 0.95rem; color: var(--texto); margin-top: 14px;
+    line-height: 1.4; }
+  .carta-sala .detalle { font-size: 0.78rem; color: var(--texto-suave);
+    margin-top: 4px; line-height: 1.5; }
+  .carta-sala .extra { font-size: 0.73rem; color: #5f6d73; margin-top: auto;
+    padding-top: 12px; }
+
+  .carta-sala .barra { height: 3px; border-radius: 2px; background: var(--negro-elevado);
+    margin-top: 12px; overflow: hidden; }
+  .carta-sala .barra i { display: block; height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--acento), var(--acento-vivo));
+    transition: width .9s cubic-bezier(.22,1,.36,1); }
+
+  /* Sala sin estrenar: el dorso de la baraja, y una invitación */
+  .carta-sala.nueva {
+    border-style: dashed;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(var(--acento-rgb),.055) 0 6px, transparent 6px 13px),
+      repeating-linear-gradient(-45deg, rgba(var(--acento-rgb),.055) 0 6px, transparent 6px 13px);
+  }
+  .carta-sala.nueva .titular { color: var(--texto-suave); }
+  .carta-sala .llamada { font-size: 0.8rem; color: var(--acento-claro);
+    margin-top: auto; padding-top: 14px; }
+
+  .carta-sala.cerrada .candadito-carta { font-size: 1.5rem; margin-top: 14px;
+    filter: grayscale(1) brightness(1.6); }
+
+  /* ---------- Ajustes ---------- */
+  .ajuste { margin-bottom: 12px; }
+  .ajuste-cabeza {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    background: var(--negro-carta); border: 1px solid var(--borde);
+    border-radius: 11px; padding: 15px 17px; cursor: pointer;
+    font-family: inherit; color: inherit; text-align: left;
+    transition: border-color .2s ease;
+  }
+  .ajuste-cabeza:hover { border-color: var(--acento); }
+  .ajuste.abierto .ajuste-cabeza { border-color: var(--acento);
+    border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .ajuste-cabeza .icono { font-size: 1.15rem; filter: grayscale(1) brightness(1.7); }
+  .ajuste-cabeza .que { flex: 1; }
+  .ajuste-cabeza .que .t { font-size: 0.93rem; color: var(--texto); }
+  .ajuste-cabeza .que .s { font-size: 0.76rem; color: var(--texto-suave); margin-top: 2px; }
+  .ajuste-cabeza .flechita {
+    width: 24px; height: 24px; display: flex; align-items: center;
+    justify-content: center; color: var(--texto-suave);
+    transition: transform .28s cubic-bezier(.34,1.3,.64,1), color .2s ease;
+  }
+  .ajuste-cabeza .flechita svg { width: 12px; height: 12px; fill: currentColor; }
+  .ajuste.abierto .flechita { transform: rotate(90deg); color: var(--acento-vivo); }
+
+  .ajuste-cuerpo { display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows .3s ease; }
+  .ajuste.abierto .ajuste-cuerpo { grid-template-rows: 1fr; }
+  .ajuste-cuerpo > div { overflow: hidden; }
+  .ajuste-dentro {
+    border: 1px solid var(--acento); border-top: none;
+    border-radius: 0 0 11px 11px; padding: 18px 17px;
+    background: var(--negro-carta); font-size: 0.86rem; line-height: 1.7;
+    color: var(--texto-suave);
+  }
+  .ajuste-dentro .boton { margin-top: 14px; }
+  .ajuste-dentro .fila-botones { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ajuste-dentro .fila-botones .boton { margin-top: 0; }
+
+  .ok { background: rgba(25,158,112,.14); border: 1px solid var(--verde-vivo);
+    border-radius: 9px; padding: 11px 14px; margin-top: 14px;
+    font-size: 0.82rem; color: var(--verde-vivo); }
+
+  .zona-soltar {
+    border: 1px dashed var(--borde); border-radius: 10px; padding: 22px 16px;
+    text-align: center; cursor: pointer; margin-top: 14px;
+    transition: all .2s ease; color: var(--texto-suave); font-size: 0.84rem;
+  }
+  .zona-soltar:hover, .zona-soltar.encima {
+    border-color: var(--acento); background: rgba(var(--acento-rgb), .1);
+    color: var(--texto);
+  }
+  .traida { background: var(--negro-elevado); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 14px 16px; margin-top: 14px; font-size: 0.82rem; }
+  .traida ul { list-style: none; margin-top: 8px; }
+  .traida li { padding: 2px 0; color: var(--texto); }
+</style>
+</head>
+<body>
+
+<div class="halo" aria-hidden="true"></div>
+{% include '_palos.html' %}
+
+<div class="app">
+  <header>
+    <img src="/mascota" alt="" class="mascota" onerror="this.style.display='none'">
+    <div>
+      <h1>JOKER</h1>
+      <div class="subtitulo">La mesa</div>
+    </div>
+    {% with sala='mesa' %}{% include '_salas.html' %}{% endwith %}
+  </header>
+
+  <div class="saludo">
+    <div class="hola" id="saludo">&nbsp;</div>
+    <div class="dia" id="dia"></div>
+  </div>
+
+  <div class="mano" id="mano"></div>
+
+  <section>
+    <h2 data-palo="&#9824;">Ajustes</h2>
+
+    <!-- COPIA DE SEGURIDAD -->
+    <div class="ajuste" id="aj-copia">
+      <button class="ajuste-cabeza" type="button" data-abre="aj-copia">
+        <span class="icono" aria-hidden="true">&#128190;</span>
+        <span class="que">
+          <span class="t">Copia de seguridad</span>
+          <span class="s">Llévate tus datos, o tráelos de vuelta</span>
+        </span>
+        <span class="flechita" aria-hidden="true">
+          <svg viewBox="0 0 8 12"><path d="M1.4 0.6 L7 6 L1.4 11.4 L0 10 L4 6 L0 2 Z"/></svg>
+        </span>
+      </button>
+      <div class="ajuste-cuerpo"><div><div class="ajuste-dentro">
+        Todo lo que tienes en JOKER cabe en un fichero. Guárdalo donde guardarías
+        una libreta con tus cosas: <strong style="color:var(--acento-texto)">la cartera
+        de inversiones viaja cifrada</strong> y sigue pidiendo su contraseña, pero
+        el gimnasio, los gastos y las notas van en claro, igual que están en tu
+        ordenador.
+
+        <div class="fila-botones" style="margin-top:16px">
+          <button class="boton" id="descargar">Descargar mi copia</button>
+        </div>
+
+        <div style="margin-top:22px;color:var(--texto)">Traer una copia</div>
+        <div style="font-size:0.8rem">
+          Restaurar <strong style="color:var(--acento-texto)">borra lo que tengas
+          ahora</strong> y lo cambia por lo de la copia. Antes de tocar nada te
+          enseño qué trae.
+        </div>
+        <div class="zona-soltar" id="soltar">
+          Suelta aquí tu fichero .json, o pulsa para buscarlo
+        </div>
+        <input type="file" id="fichero" accept=".json,application/json" class="oculto">
+        <div id="traida"></div>
+        <div id="error-copia"></div>
+      </div></div></div>
+    </div>
+
+    <!-- PIN -->
+    <div class="ajuste" id="aj-pin">
+      <button class="ajuste-cabeza" type="button" data-abre="aj-pin">
+        <span class="icono" aria-hidden="true">&#128273;</span>
+        <span class="que">
+          <span class="t">PIN de entrada</span>
+          <span class="s" id="estado-pin">Comprobando&hellip;</span>
+        </span>
+        <span class="flechita" aria-hidden="true">
+          <svg viewBox="0 0 8 12"><path d="M1.4 0.6 L7 6 L1.4 11.4 L0 10 L4 6 L0 2 Z"/></svg>
+        </span>
+      </button>
+      <div class="ajuste-cuerpo"><div><div class="ajuste-dentro">
+        Una cortina delante de JOKER, para que quien abra el portátil no vea de
+        entrada tu peso y tus deudas.
+
+        <div style="margin-top:12px;font-size:0.8rem;color:#5f6d73">
+          Ojo a la diferencia: el PIN es una <em>puerta</em>. Tus datos del
+          gimnasio y de gastos siguen guardados en claro dentro de joker.db, y
+          quien se lleve ese fichero los puede leer con otro programa. La cartera
+          de inversiones sí va cifrada de verdad, con su propia contraseña.
+        </div>
+
+        <div class="campos" style="margin-top:18px">
+          <div class="oculto" id="campo-pin-actual">
+            <label for="pin-actual">PIN de ahora</label>
+            <input type="password" id="pin-actual" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="pin-nuevo">PIN nuevo</label>
+            <input type="password" id="pin-nuevo" inputmode="numeric" autocomplete="new-password">
+          </div>
+          <div>
+            <label for="pin-repetido">Repítelo</label>
+            <input type="password" id="pin-repetido" inputmode="numeric" autocomplete="new-password">
+          </div>
+        </div>
+        <div id="error-pin"></div>
+        <div id="ok-pin"></div>
+        <div class="fila-botones" style="margin-top:16px">
+          <button class="boton" id="guardar-pin">Guardar el PIN</button>
+          <button class="boton secundario oculto" id="quitar-pin">Quitar el PIN</button>
+          <button class="boton secundario oculto" id="salir">Bloquear ahora</button>
+        </div>
+      </div></div></div>
+    </div>
+  </section>
+
+  <div class="nota-legal">
+    Todo lo que ves aquí sale de tu propio ordenador. JOKER no manda tus datos
+    a ningún sitio.
+  </div>
+</div>
+
+{% include '_joker_boton.html' %}
+
+<script src="/static/mesa.js"></script>
+</body>
+</html>

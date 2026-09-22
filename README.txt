@@ -13,6 +13,7 @@ con página web propia en burdeos y negro.
 Y ya no es solo un chat: tiene cuatro salas, y cada una lleva su palo de la
 baraja para que sepas dónde estás antes de leer la palabra.
 
+  🃏 MESA         el resumen de todo                ->  /mesa
   ♥  JOKER        el chat con la IA                 ->  /
   ♠  J0KER GYM    entrenamiento y nutrición         ->  /gym
   ♦  J0KER GASTOS tu dinero, repartido              ->  /gastos
@@ -216,6 +217,38 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
       borrar_nota        quitarlo
 
 
+20. LA MESA (/mesa): el resumen de las cuatro salas, una carta por sala con
+    UNA cifra cada una. Ya no hay que entrar en cada sitio para saber cómo
+    lo llevas. Y ahí dentro están los ajustes nuevos.
+
+21. COPIA DE SEGURIDAD. Un botón descarga todo lo que tienes en un fichero
+    .json, y otro lo devuelve a su sitio. La cartera de inversiones viaja
+    CIFRADA dentro (sigue pidiendo su contraseña donde la restaures); el
+    resto, en claro, y se avisa. Antes de restaurar se comprueba el fichero
+    y se enseña lo que trae: si no es una copia de JOKER, el error llega con
+    los datos buenos todavía en su sitio.
+
+22. PIN DE ENTRADA. Una cortina delante de toda la web, para que quien abra
+    el portátil no vea de entrada tu peso y tus deudas. No es cifrado y la
+    web lo dice: es una puerta. La cartera sigue siendo lo único cifrado de
+    verdad.
+
+23. EL MICRÓFONO YA FUNCIONA. Usa el reconocimiento de voz del propio
+    navegador: no pasa por ningún servidor, no cuesta nada y no pide clave.
+    Mientras te escucha, el botón late, para que no haya duda de que el
+    micro está abierto.
+
+24. Y JOKER CONTESTA EN VOZ ALTA si le das al botón de voz. También del
+    navegador, también gratis, y también sin mandar el texto a ningún sitio.
+    Los bloques de código no se leen: escuchar llaves una a una no sirve.
+
+25. Arreglada la cinta de cotizaciones, que salía vacía. Eran las cabeceras:
+    tanto Yahoo como Stooq rechazan a quien no se presenta como un
+    navegador. Ahora hay DOS fuentes (Yahoo primero, Stooq de reserva) y un
+    botón de "¿por qué?" que dice si el problema es que no hay internet, que
+    una fuente ha cambiado, o que el símbolo está mal escrito.
+
+
 FICHEROS DEL PROYECTO
 ----------------------
 
@@ -240,6 +273,9 @@ FICHEROS DEL PROYECTO
   gastos.py         Todo el cálculo de J0KER GASTOS: reglas de reparto,
                     avisos y el simulador de deudas.
   inversiones.py    La cartera cifrada y las cotizaciones.
+  mesa.py           El resumen de las cuatro salas.
+  copia.py          Exportar e importar todos tus datos.
+  acceso.py         El PIN de entrada.
   joker.db          Tus datos del gimnasio Y de tus cuentas. Local, NO se
                     sube a GitHub.
 
@@ -251,6 +287,7 @@ FICHEROS DEL PROYECTO
   static/inversiones.js
                     Toda la sala de inversiones: el candado, la cartera,
                     las fichas del mercado y las minigráficas.
+  static/mesa.js    La Mesa y sus ajustes.
 
   joker_gemini.py   La misma idea con Gemini (Google). Referencia: dio
                     problemas de facturación, puede que no funcione ya.
@@ -604,17 +641,98 @@ templates/index.html. Basta con mandarlo a /api/chat junto al mensaje y
 usarlo en app.py. Está comentado en el propio código.
 
 
-EL MICRÓFONO DEL CHAT
------------------------
+HABLAR Y ESCUCHAR
+-------------------
 
-Está al lado del botón de enviar, y TODAVÍA NO GRABA. Es solo el sitio
-guardado para cuando toque conectarlo.
+EL MICRÓFONO (al lado del botón de enviar)
+  Pulsas, hablas, y lo que dices se va escribiendo solo en la caja. Cuando
+  terminas, pulsas otra vez y ya puedes enviarlo o corregirlo antes.
 
-Se ve apagado a propósito, y al pulsarlo te lo dice él mismo en vez de
-quedarse mudo: un botón que promete algo que no hace es peor que no
-tenerlo. Cuando llegue su turno, el enganche va en el manejador del clic
-de #microfono en templates/index.html, con la API de reconocimiento de voz
-del navegador.
+  Lo hace el PROPIO NAVEGADOR (la API SpeechRecognition): tu voz no pasa por
+  ningún servidor nuestro, no cuesta nada y no necesita ninguna clave.
+
+  Mientras escucha, el botón late. Un micrófono abierto sin avisar es de mala
+  educación, así que se ve desde la otra punta de la habitación.
+
+  Lo traen Chrome y Edge. Firefox no: ahí el botón se apaga y te lo dice, en
+  vez de no hacer nada y parecer roto. La primera vez el navegador te pedirá
+  permiso; si dices que no, el aviso te explica dónde cambiarlo.
+
+EL BOTÓN DE VOZ (junto al selector de potencia)
+  Enciéndelo y JOKER lee sus respuestas en voz alta. También es del sistema
+  (speechSynthesis): gratis, sin internet y sin mandar el texto a ningún
+  sitio. Se queda encendido entre visitas.
+
+  Los bloques de código no se leen: escuchar llaves y paréntesis uno a uno no
+  le sirve a nadie, así que se sustituyen por "aquí va un trozo de código".
+
+
+LA MESA
+---------
+
+En http://127.0.0.1:5000/mesa (o pulsando 🃏 MESA arriba). Es la portada:
+una carta por sala, y en cada una UNA cifra, la que contestarías si te
+preguntasen por el pasillo "¿cómo lo llevas?".
+
+  ♠ Gimnasio     qué toca hoy y cuántos días llevas de la semana
+  ♦ Gastos       cuánto te queda del mes
+  ♣ Inversiones  cuánto vale tu cartera (solo si la has desbloqueado)
+  ♥ Libreta      tu última nota
+
+Si una sala no está estrenada, la carta sale con el dorso de la baraja y te
+invita a entrar, en vez de enseñar un cero que parecería un dato.
+
+Y la cartera cerrada NO enseña ni una cifra, solo el candado. Para eso se
+cifró: quien se siente delante sin la contraseña no debería enterarse ni de
+cuánto tienes.
+
+
+COPIA DE SEGURIDAD
+--------------------
+
+En la Mesa, dentro de Ajustes.
+
+  DESCARGAR   un fichero .json con todo: gimnasio, gastos, notas, cartera y
+              hasta el PIN. Guárdalo donde guardarías una libreta con tus
+              cosas.
+
+  TRAER       arrastras el fichero (o lo buscas) y ANTES de tocar nada te
+              enseño qué trae: cuántos pesos, cuántos gastos, cuántas notas.
+              Tú decides si restaurar.
+
+Dos cosas importantes:
+
+  La CARTERA viaja cifrada. En el fichero de copia es tan ilegible como en el
+  original, y hace falta la misma contraseña para abrirla donde la restaures.
+
+  EL RESTO va en claro, igual que está en joker.db. Tu peso, tus gastos y tus
+  notas se leen abriendo el fichero. Es una copia de seguridad, no una caja
+  fuerte: si la vas a subir a la nube, tenlo en cuenta.
+
+RESTAURAR BORRA lo que tengas ahora. Por eso se comprueba el fichero primero:
+si no es una copia de JOKER, el error te llega con tus datos buenos todavía
+en su sitio. Y todo va dentro de una transacción, así que si algo falla a
+mitad no te quedas con media base restaurada.
+
+
+EL PIN DE ENTRADA
+-------------------
+
+También en la Mesa, en Ajustes. Pones un PIN y JOKER te lo pide al abrirse.
+
+Conviene tener clara la diferencia, porque no es lo mismo:
+
+  EL PIN es una PUERTA. Evita que quien abra tu portátil vea de entrada tu
+  peso y tus deudas. Se guarda como un hash con scrypt, así que no está
+  escrito en ningún sitio. Pero tus datos del gimnasio y de gastos siguen
+  guardados EN CLARO dentro de joker.db: quien se lleve ese fichero los lee
+  con otro programa, con PIN o sin él.
+
+  LA CONTRASEÑA DE LA CARTERA es CIFRADO de verdad. Ahí los bytes no
+  significan nada sin ella.
+
+Es una decisión, no un descuido: cifrarlo todo obligaría a escribir una
+contraseña larga para mirar cuántas series tocan hoy, y nadie aguanta eso.
 
 
 EL CLIMA

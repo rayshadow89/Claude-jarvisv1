@@ -23,17 +23,22 @@ Y abre http://127.0.0.1:5000 en el navegador.
 
 from __future__ import annotations
 
+import json
 import os
 import secrets
 from pathlib import Path
 
 import openai
-from flask import Flask, jsonify, render_template, request, send_from_directory, session
+from flask import (Flask, jsonify, redirect, render_template, request,
+                   send_from_directory, session, url_for)
 
+import acceso
+import copia
 import gastos
 import gym
 import inversiones
 import joker
+import mesa
 import tools
 
 try:
@@ -876,6 +881,184 @@ def inv_historico():
     except ValueError:
         dias = 60
     return jsonify({"simbolo": simbolo, "puntos": inversiones.historico(simbolo, dias)})
+
+
+# ---------------------------------------------------------------------------
+# EL PIN DE LA CASA
+# ---------------------------------------------------------------------------
+# Una cortina delante de todo JOKER, para que quien abra el portátil no vea de
+# entrada tu peso y tus deudas. No es cifrado (eso lo tiene la cartera): es una
+# puerta. La diferencia está explicada en la propia pantalla.
+
+# Lo que sigue abierto aunque haya PIN: la propia pantalla de bloqueo, lo que
+# necesita para funcionar, y los ficheros estáticos. Sin esto, la pantalla que
+# pide el PIN no podría ni pintarse.
+SIN_PIN = {"pagina_bloqueo", "acceso_entrar", "acceso_estado", "static",
+           "favicon", "mascota"}
+
+
+@app.before_request
+def _guardar_la_puerta():
+    if request.endpoint in SIN_PIN:
+        return None
+    if not acceso.hay_pin() or session.get("pin_ok"):
+        return None
+
+    # A una llamada de la API se le contesta con un 401 para que el navegador
+    # sepa qué ha pasado; a una página, se la manda a la pantalla de bloqueo.
+    if request.path.startswith("/api/"):
+        return jsonify({"bloqueado": True,
+                        "error": "JOKER está bloqueado. Escribe tu PIN."}), 401
+    return redirect(url_for("pagina_bloqueo"))
+
+
+@app.get("/bloqueo")
+def pagina_bloqueo():
+    if not acceso.hay_pin() or session.get("pin_ok"):
+        return redirect(url_for("pagina_mesa"))
+    return render_template("bloqueo.html")
+
+
+@app.get("/api/acceso/estado")
+def acceso_estado():
+    return jsonify({"hay_pin": acceso.hay_pin(),
+                    "abierto": bool(session.get("pin_ok")) or not acceso.hay_pin(),
+                    "minimo": acceso.PIN_MINIMO})
+
+
+@app.post("/api/acceso/entrar")
+def acceso_entrar():
+    datos = request.get_json(silent=True) or {}
+    if not acceso.comprobar_pin(str(datos.get("pin", ""))):
+        return jsonify({"error": "Ese PIN no es el bueno."}), 401
+    session["pin_ok"] = True
+    return jsonify({"ok": True})
+
+
+@app.post("/api/acceso/salir")
+def acceso_salir():
+    """Echar la cortina a mano. También cierra la cartera, por si acaso."""
+    session.pop("pin_ok", None)
+    _olvidar_clave()
+    return jsonify({"ok": True})
+
+
+@app.post("/api/acceso/poner")
+def acceso_poner():
+    datos = request.get_json(silent=True) or {}
+    pin, repetido = str(datos.get("pin", "")), str(datos.get("repetido", ""))
+
+    if acceso.hay_pin() and not acceso.comprobar_pin(str(datos.get("actual", ""))):
+        return jsonify({"error": "El PIN actual no es el bueno."}), 401
+    if pin != repetido:
+        return jsonify({"error": "Los dos PIN no coinciden."}), 400
+
+    try:
+        acceso.poner_pin(pin)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    session["pin_ok"] = True
+    return jsonify({"ok": True, "hay_pin": True})
+
+
+@app.post("/api/acceso/quitar")
+def acceso_quitar():
+    datos = request.get_json(silent=True) or {}
+    try:
+        acceso.quitar_pin(str(datos.get("pin", "")))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 401
+    return jsonify({"ok": True, "hay_pin": False})
+
+
+# ---------------------------------------------------------------------------
+# COPIA DE SEGURIDAD
+# ---------------------------------------------------------------------------
+
+@app.get("/api/copia/exportar")
+def copia_exportar():
+    """Se descarga un .json con todo. La cartera va cifrada dentro."""
+    from datetime import date
+    from flask import Response
+
+    datos = copia.exportar()
+    nombre = f"joker-copia-{date.today().isoformat()}.json"
+    return Response(
+        json.dumps(datos, ensure_ascii=False, indent=2),
+        mimetype="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+@app.post("/api/copia/mirar")
+def copia_mirar():
+    """Qué trae una copia, SIN restaurarla. Para poder decidir con información."""
+    datos = request.get_json(silent=True)
+    if datos is None:
+        return jsonify({"error": "Ese fichero no es un JSON válido."}), 400
+    try:
+        copia.comprobar(datos)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True, "resumen": copia.resumen(datos)})
+
+
+@app.post("/api/copia/restaurar")
+def copia_restaurar():
+    """
+    Deja joker.db como estaba en la copia. Lo que haya ahora se pierde.
+
+    Se comprueba el fichero ANTES de borrar nada: si no es una copia de JOKER,
+    el error llega con los datos buenos todavía en su sitio.
+    """
+    datos = request.get_json(silent=True)
+    if datos is None:
+        return jsonify({"error": "Ese fichero no es un JSON válido."}), 400
+
+    try:
+        copia.comprobar(datos)
+        copia.preparar_tablas()
+        puestas = copia.restaurar(datos)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"No he podido restaurar la copia: {e}"}), 500
+
+    # Todo lo abierto deja de valer: la cartera se cifró con otra contraseña y
+    # el PIN puede ser otro. Se cierra la sesión entera y se vuelve a empezar.
+    _olvidar_clave()
+    session.pop("pin_ok", None)
+    return jsonify({"ok": True, "puestas": puestas})
+
+
+# ---------------------------------------------------------------------------
+# LA MESA  (el resumen de las cuatro salas)
+# ---------------------------------------------------------------------------
+
+@app.get("/mesa")
+def pagina_mesa():
+    return render_template("mesa.html")
+
+
+@app.get("/api/mesa")
+def mesa_resumen():
+    return jsonify(mesa.resumen(_clave_cartera()))
+
+
+# ---------------------------------------------------------------------------
+# Por qué no salen las cotizaciones
+# ---------------------------------------------------------------------------
+
+@app.get("/api/inversiones/diagnostico")
+def inv_diagnostico():
+    """
+    Qué pasa exactamente al pedir un precio, fuente por fuente.
+
+    "La cinta sale vacía" no dice si es que no hay internet, si una fuente ha
+    cambiado o si el símbolo está mal. Esto lo separa.
+    """
+    return jsonify(inversiones.diagnostico())
 
 
 @app.post("/api/nueva")

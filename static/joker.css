@@ -149,6 +149,9 @@ h1 {
   background: rgba(var(--acento-rgb), 0.14); transform: translateY(-1px); }
 .sala:active { transform: translateY(0); }
 .sala .palo-sala { font-size: 0.95rem; line-height: 1; opacity: 0.75; }
+/* La carta del comodín va sin filtro: cualquier intento de teñirla la dejaba
+   en un rectángulo blanco, igual que pasó con el botón flotante. */
+.sala.mesa .palo-sala { font-size: 1.05rem; opacity: 1; }
 /* La sala en la que estás: además del fondo, un halo tenue del color de la
    casa. Es la diferencia entre "creo que estoy aquí" y saberlo. */
 .sala.aqui { border-color: var(--acento); color: #fff;
