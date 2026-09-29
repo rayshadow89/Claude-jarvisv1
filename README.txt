@@ -13,11 +13,11 @@ con página web propia en burdeos y negro.
 Y ya no es solo un chat: tiene cuatro salas, y cada una lleva su palo de la
 baraja para que sepas dónde estás antes de leer la palabra.
 
-  🃏 MESA         el resumen de todo                ->  /mesa
-  ♥  JOKER        el chat con la IA                 ->  /
-  ♠  J0KER GYM    entrenamiento y nutrición         ->  /gym
-  ♦  J0KER GASTOS tu dinero, repartido              ->  /gastos
-  ♣  INVERSIONES  tu cartera, cifrada               ->  /inversiones
+   MESA         el resumen de todo                ->  /mesa
+   JOKER        el chat con la IA                 ->  /
+   J0KER GYM    entrenamiento y nutrición         ->  /gym
+   J0KER GASTOS tu dinero, repartido              ->  /gastos
+   INVERSIONES  tu cartera, cifrada               ->  /inversiones
 
 Se puede usar de dos formas:
   - Desde una página web con interfaz de chat  ->  python app.py
