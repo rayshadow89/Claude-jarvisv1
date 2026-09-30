@@ -177,10 +177,19 @@ def run_turn(client: OpenAI, messages: list, tool_defs: list):
 # Creación del cliente (lo comparten la terminal y la web)
 # ---------------------------------------------------------------------------
 
+# Se recomienda el .env y no la variable de terminal a propósito: PowerShell
+# guarda todo lo que escribes en ConsoleHost_history.txt, así que la clave se
+# queda ahí escrita en claro. El .env está en el .gitignore y no se sube.
 FALTA_CLAVE = (
     "Falta la clave de la API.\n\n"
     "1. Consigue una gratis en https://console.groq.com/keys\n"
-    "2. Configúrala en esta misma terminal:\n\n"
+    "2. Guárdala en un fichero .env, en la carpeta del proyecto:\n\n"
+    "     copy .env.example .env      (en Mac/Linux: cp)\n\n"
+    "   y dentro pega la clave detrás del igual:\n\n"
+    "     GROQ_API_KEY=gsk_...tu-clave...\n\n"
+    "   Se carga sola cada vez y no se sube nunca a GitHub.\n\n"
+    "   Si prefieres la variable de terminal (dura hasta que cierres\n"
+    "   la ventana, y queda en el historial de PowerShell):\n\n"
     '     Windows PowerShell:  $env:GROQ_API_KEY="tu-clave"\n'
     "     Windows cmd:         set GROQ_API_KEY=tu-clave\n"
     '     Mac / Linux:         export GROQ_API_KEY="tu-clave"'

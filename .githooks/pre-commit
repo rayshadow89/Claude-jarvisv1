@@ -1,0 +1,110 @@
+#!/bin/sh
+# ---------------------------------------------------------------------------
+# El guardián: revisa cada commit ANTES de dejarlo pasar
+# ---------------------------------------------------------------------------
+# Este repositorio es público. Una clave subida por error está en internet en
+# el segundo siguiente, y borrarla después no sirve de nada: queda en el
+# historial, en los caches de GitHub y en cualquier copia que alguien tenga.
+#
+# Por eso se revisa ANTES. Es mucho más barato parar un commit que limpiar
+# una filtración.
+#
+# Se instala una sola vez, desde la carpeta del proyecto:
+#     git config core.hooksPath .githooks
+#
+# Si alguna vez salta sin razón (un falso positivo), puedes saltártelo:
+#     git commit --no-verify -m "..."
+# Pero léelo antes: nueve de cada diez veces tiene razón.
+# ---------------------------------------------------------------------------
+
+rojo='\033[0;31m'; amarillo='\033[0;33m'; gris='\033[0;90m'; fin='\033[0m'
+problemas=0
+
+aviso_cabecera() {
+    if [ "$problemas" -eq 0 ]; then
+        printf "\n${rojo}================================================================${fin}\n"
+        printf "${rojo}  COMMIT PARADO: he visto algo que no debería subirse${fin}\n"
+        printf "${rojo}================================================================${fin}\n\n"
+    fi
+}
+
+# --- 1. Ficheros que no deben subirse NUNCA, por su nombre --------------------
+# Se mira aunque el .gitignore ya los cubra: si alguien los añade a la fuerza
+# con "git add -f", el .gitignore no dice nada y esto sí.
+
+for fichero in $(git diff --cached --name-only --diff-filter=ACM); do
+    prohibido=""
+    case "$fichero" in
+        .env|.env.*)
+            [ "$fichero" = ".env.example" ] || prohibido="lleva tu clave de la API" ;;
+        *.db|*.sqlite|*.sqlite3)
+            prohibido="es tu base de datos: peso, gastos, deudas y cartera" ;;
+        joker-copia-*.json|*.backup|*.bak)
+            prohibido="es una copia de seguridad: lleva tus datos en claro" ;;
+    esac
+
+    if [ -n "$prohibido" ]; then
+        aviso_cabecera
+        printf "  ${rojo}FICHERO${fin}  %s\n" "$fichero"
+        printf "  ${gris}         %s${fin}\n\n" "$prohibido"
+        problemas=$((problemas + 1))
+    fi
+done
+
+# --- 2. Claves dentro del contenido ------------------------------------------
+# Los patrones piden 20+ caracteres detrás del prefijo a propósito: así los
+# marcadores del README ("tu-clave", GROQ_API_KEY=...) no disparan nada, y una
+# clave de verdad sí.
+
+busca_clave() {
+    patron="$1"
+    nombre="$2"
+
+    for fichero in $(git diff --cached --name-only --diff-filter=ACM); do
+        # Solo lo que se va a subir de ese fichero, no el fichero entero
+        encontrado=$(git diff --cached -U0 -- "$fichero" \
+                     | grep -n -E "^\+.*$patron" \
+                     | head -3)
+
+        if [ -n "$encontrado" ]; then
+            aviso_cabecera
+            printf "  ${rojo}CLAVE${fin}    %s\n" "$fichero"
+            printf "  ${gris}         tiene pinta de ser una clave de %s${fin}\n" "$nombre"
+            # Se dice DÓNDE está, nunca QUÉ pone. Este aviso no puede acabar
+            # siendo otro sitio más donde la clave está escrita.
+            # El número sale del fichero tal y como está preparado para subir
+            # (":$fichero"), no del diff, para que sea la línea de verdad.
+            lineas=$(git show ":$fichero" 2>/dev/null \
+                     | grep -n -a -E "$patron" \
+                     | cut -d: -f1 | head -3 | tr '\n' ' ')
+            if [ -n "$lineas" ]; then
+                printf "  ${gris}         en la linea %s${fin}\n\n" "$lineas"
+            else
+                printf "\n"
+            fi
+            problemas=$((problemas + 1))
+        fi
+    done
+}
+
+busca_clave 'gsk_[A-Za-z0-9]{20,}'        "Groq"
+busca_clave 'sk-[A-Za-z0-9_-]{20,}'       "OpenAI"
+busca_clave 'sk-ant-[A-Za-z0-9_-]{20,}'   "Anthropic"
+busca_clave 'AIza[A-Za-z0-9_-]{30,}'      "Google"
+busca_clave 'gh[pousr]_[A-Za-z0-9]{20,}'  "GitHub"
+busca_clave 'AKIA[A-Z0-9]{16}'            "AWS"
+busca_clave 'xox[baprs]-[A-Za-z0-9-]{20,}' "Slack"
+
+# --- 3. Veredicto ------------------------------------------------------------
+
+if [ "$problemas" -gt 0 ]; then
+    printf "${amarillo}  Qué hacer:${fin}\n"
+    printf "    1. Quítalo de lo que vas a subir:   ${gris}git restore --staged <fichero>${fin}\n"
+    printf "    2. Si era una clave DE VERDAD, ve a revocarla ahora mismo:\n"
+    printf "       ${gris}https://console.groq.com/keys${fin}\n"
+    printf "       Una clave revocada no vale nada aunque se filtre.\n"
+    printf "    3. Si me he equivocado:             ${gris}git commit --no-verify${fin}\n\n"
+    exit 1
+fi
+
+exit 0
