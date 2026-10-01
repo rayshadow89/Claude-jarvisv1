@@ -35,11 +35,14 @@ Para usarlo, cada vez:
 
   1. Colócate en la rama main:     git checkout main
   2. Actualiza:                     git pull
-  3. Pon la clave:                  $env:GROQ_API_KEY="tu-clave"
-  4. Arranca la web:                python app.py
-  5. Abre en el navegador:          http://127.0.0.1:5000
+  3. Arranca la web:                python app.py
+  4. Abre en el navegador:          http://127.0.0.1:5000
 
 (el paso 1 solo hace falta si alguna vez te cambias de rama sin querer)
+
+La clave ya no se escribe cada vez: vive en un fichero .env que se carga
+solo. Se pone UNA vez, y está explicado en el paso 3 de CÓMO PONERLO EN
+MARCHA. Si te sale "Falta la clave de la API", es que ese fichero no está.
 
 
 AVISO IMPORTANTE: USA SIEMPRE LA RAMA "main"
@@ -248,6 +251,16 @@ TODO EL CAMINO RECORRIDO (por si quieres el porqué de algo)
     botón de "¿por qué?" que dice si el problema es que no hay internet, que
     una fuente ha cambiado, o que el símbolo está mal escrito.
 
+26. REVISIÓN DE SEGURIDAD, porque el repositorio es público. Busqué claves
+    de API en los 54 commits de todas las ramas: no hay ninguna, y nunca se
+    subió el .env ni el joker.db. Lo que SÍ había era un agujero por abrir:
+    las copias de seguridad que descarga la Mesa llevan tus datos en claro y
+    no estaban en el .gitignore. Tapado. Además hay un guardián que PARA el
+    commit si ve una clave o un fichero con tus datos, una plantilla
+    .env.example, un script para revisar todo el historial cuando quieras, y
+    una sección SEGURIDAD en este README que explica qué está protegido, qué
+    no, y por qué "encriptar el código" no existe como opción.
+
 
 FICHEROS DEL PROYECTO
 ----------------------
@@ -296,6 +309,19 @@ FICHEROS DEL PROYECTO
 
   requirements.txt  Las librerías que hay que instalar.
 
+  .env.example      La plantilla de claves, SIN valores. Esta sí se sube.
+                    Haces una copia con el nombre .env y pones tu clave
+                    ahí. Mira la sección SEGURIDAD.
+  .gitignore        La lista de lo que git no debe ver nunca: el .env, el
+                    joker.db y las copias de seguridad.
+  .githooks/pre-commit
+                    El guardián: para el commit si ve una clave o un
+                    fichero con tus datos. Se activa una vez con
+                    "git config core.hooksPath .githooks".
+  herramientas/revisar-secretos.sh
+                    La revisión completa, a mano: busca claves en los
+                    ficheros de ahora Y en todo el historial de git.
+
 
 CÓMO PONERLO EN MARCHA
 -----------------------
@@ -311,16 +337,33 @@ CÓMO PONERLO EN MARCHA
    Es gratis y sin tarjeta. Tiene límites de peticiones por minuto y por
    día, de sobra para uso personal.
 
-3. Configura la clave en la terminal (dura hasta que cierres la ventana):
+3. Guarda la clave en un fichero .env — este es el método recomendado.
+
+   Desde esta carpeta, haz una copia de la plantilla:
+
+     Windows:      copy .env.example .env
+     Mac / Linux:  cp .env.example .env
+
+   Abre el .env que te acaba de salir y pega tu clave detrás del igual:
+
+     GROQ_API_KEY=gsk_...aqui-tu-clave...
+
+   Y listo. Se carga sola cada vez que arranques JOKER, no hay que volver
+   a escribirla nunca, y el .env está en el .gitignore, así que no se sube
+   a GitHub ni queriendo.
+
+   Si prefieres la variable de terminal (dura hasta que cierres la ventana):
 
      Windows PowerShell:  $env:GROQ_API_KEY="tu-clave"
      Windows cmd:         set GROQ_API_KEY=tu-clave
      Mac / Linux:         export GROQ_API_KEY="tu-clave"
 
-   Alternativa más cómoda: crea un fichero llamado .env en esta carpeta con
-   esta línea dentro, y se cargará sola cada vez:
-
-     GROQ_API_KEY=tu-clave
+   Funciona, pero es peor, y conviene saber por qué: PowerShell guarda todo
+   lo que escribes en un fichero de historial
+   (ConsoleHost_history.txt, dentro de tu carpeta de usuario). Si pones la
+   clave ahí, se queda escrita en claro en ese fichero, aunque cierres la
+   ventana. Con el .env eso no pasa: está en un solo sitio, y ese sitio
+   está tapado.
 
 4. Arranca la página web:
 
@@ -619,6 +662,173 @@ Nota sobre los somatotipos: la clasificación ectomorfo/mesomorfo/endomorfo
 es de los años 40 y la ciencia moderna no la respalda como predictor. Está
 incluida porque se usa mucho, pero solo ajusta un ±5%. Lo que manda de
 verdad es la fórmula de gasto calórico.
+
+
+SEGURIDAD
+-----------
+
+Este repositorio es PÚBLICO. Cualquiera puede leer todo el código, y eso
+está bien: el código no tiene nada que esconder. Lo que hay que esconder
+son dos cosas, y las dos están fuera de git.
+
+  LA CLAVE DE GROQ    vive en el fichero .env, que está en el .gitignore.
+                      El código nunca la lleva escrita: la pide con
+                      os.environ.get("GROQ_API_KEY") (joker.py, línea 192).
+  TUS DATOS           viven en joker.db, que también está en el
+                      .gitignore. Peso, gastos, deudas, notas y cartera.
+
+Revisé los 54 commits de todas las ramas buscando claves de Groq, OpenAI,
+Anthropic, Google, GitHub y AWS. No hay ninguna, en ningún commit. Nunca
+se subió un .env ni el joker.db. Por eso no hubo que reescribir el
+historial ni revocar nada de urgencia.
+
+
+LO QUE HAY PUESTO PARA QUE SIGA ASÍ
+-------------------------------------
+
+1. EL .gitignore
+
+   Tapa el .env y sus variantes, el joker.db y cualquier .sqlite, y —esto
+   es lo que faltaba— las copias de seguridad: joker-copia-*.json, *.bak,
+   *.backup. Ese fichero que te descarga el botón de copia de la Mesa
+   lleva tu peso, tus gastos, tus deudas y tus notas EN CLARO. Si lo
+   guardabas en la carpeta del proyecto y hacías "git add -A", se subía a
+   un repositorio público. Ahora no.
+
+   El .env.example sí se sube, a propósito: es la plantilla vacía, para
+   que se vea qué claves hacen falta sin que ninguna esté escrita.
+
+2. EL GUARDIÁN (.githooks/pre-commit)
+
+   Revisa cada commit ANTES de dejarlo pasar. Si ve una clave con formato
+   de verdad, o un .env, o la base de datos, o una copia de seguridad,
+   PARA el commit y te dice qué fichero y qué línea.
+
+   Se instala una sola vez, desde esta carpeta:
+
+     git config core.hooksPath .githooks
+
+   En Windows funciona sin instalar nada: Git for Windows ya trae lo que
+   necesita.
+
+   Mira el nombre del fichero y también el contenido de lo que vas a
+   subir, porque son dos agujeros distintos: "git add -f .env" se salta el
+   .gitignore, y una clave pegada dentro de un .py no tiene nada que ver
+   con el nombre del fichero.
+
+   Pide 20 caracteres o más detrás del prefijo (gsk_, sk-, AIza...) a
+   propósito: así los ejemplos de este mismo README ("tu-clave") no lo
+   disparan, y una clave de verdad sí. Está probado con 15 casos: las 11
+   cosas que debe parar las para, y las 4 que debe dejar pasar las deja.
+
+   Si alguna vez salta sin razón:
+
+     git commit --no-verify -m "..."
+
+   Pero lee primero lo que te dice. Nueve de cada diez veces tiene razón.
+
+3. LA REVISIÓN A MANO (herramientas/revisar-secretos.sh)
+
+   El guardián mira lo que estás a punto de subir. Esto mira TODO: los
+   ficheros de ahora y todos los commits de atrás, porque borrar una clave
+   de un fichero no la borra del historial.
+
+   Desde esta carpeta (en Windows, clic derecho → "Git Bash Here"):
+
+     sh herramientas/revisar-secretos.sh
+
+   No cambia nada, solo mira y te cuenta. Comprueba las claves en los
+   ficheros, las claves en el historial, si alguna vez se subió un .env o
+   la base de datos, si el .gitignore tapa lo que debe, si el guardián
+   está puesto, y si quedan objetos huérfanos o cosas en el stash.
+
+   Lánzalo cuando quieras. Ahora mismo sale TODO LIMPIO.
+
+
+SOBRE "ENCRIPTAR EL CÓDIGO": NO EXISTE
+----------------------------------------
+
+Hay que decirlo claro, porque suena a que debería existir y no existe.
+
+Python se ejecuta interpretado: para que tu ordenador pueda correr app.py,
+tiene que poder LEER app.py. No hay forma de darle un fichero que el
+intérprete entienda y una persona no. Lo que se vende como "ofuscar" o
+"compilar" Python (pyarmor, pyinstaller, .pyc) se revierte en minutos con
+herramientas que están en Google, y no protege nada: solo te da la
+sensación de estar protegido, que es peor que saber que no lo estás.
+
+Lo correcto no es esconder el código. Es que el código no tenga nada que
+esconder — que es exactamente cómo está hecho este. Todo lo que hay en
+GitHub lo puede leer cualquiera sin que le sirva de nada: sin tu .env no
+tiene clave, y sin tu joker.db no tiene tus datos.
+
+Si algún día quieres privacidad de verdad sobre el código, la única vía
+real es hacer el repositorio privado:
+
+     GitHub → tu repositorio → Settings → General → abajo, en "Danger
+     Zone" → Change repository visibility → Make private
+
+Eso lo esconde de verdad, porque lo esconde en el servidor, no en el
+fichero. Por ahora se queda público, que es una decisión perfectamente
+razonable para un proyecto así.
+
+
+SI ALGÚN DÍA SE FILTRA UNA CLAVE
+----------------------------------
+
+No hace falta hoy. Está escrito aquí para el día que haga falta, porque
+ese día se hacen las cosas en el orden equivocado.
+
+El orden es este:
+
+  1. REVOCAR LA CLAVE. Ve a https://console.groq.com/keys, bórrala, y saca
+     otra. Pon la nueva en tu .env.
+
+     Esto es el 95% del trabajo. Una clave revocada no vale nada aunque
+     esté en mil sitios: el servidor de Groq la rechaza y se acabó. Se
+     hace en un minuto y hay que hacerlo PRIMERO.
+
+  2. SOLO DESPUÉS, y si te apetece, limpiar el historial de git.
+
+     Se hace con git filter-repo (o la opción de GitHub "Remove sensitive
+     data"). Avisa: reescribe TODOS los hashes de commit, obliga a un
+     "git push --force", y a cualquiera que tenga una copia del repositorio
+     le rompe la suya. Con la clave ya revocada, esto es cosmético.
+
+  3. NUNCA AL REVÉS.
+
+     Limpiar el historial sin revocar la clave es lo peor de las dos
+     opciones: te lleva media tarde y la clave sigue viva, porque para
+     entonces ya está en los caches de GitHub, en cualquier fork que
+     alguien haya hecho, en los buscadores que rastrean GitHub y en los
+     bots que buscan claves justo así. Lo que te salva es revocarla, no
+     esconderla.
+
+
+LO QUE ESTO NO PROTEGE
+------------------------
+
+Para que quede dicho, sin adornos:
+
+  EL PIN DE ENTRADA es una cortina, no una cerradura. Evita que alguien
+  que pase por delante del portátil vea tus datos. No protege el
+  joker.db: quien tenga el fichero lo abre con cualquier visor de SQLite
+  y lee el gimnasio, los gastos y las notas sin PIN ninguno.
+
+  LA CARTERA DE INVERSIONES sí está cifrada de verdad (AES-256-GCM, con
+  la clave derivada de tu contraseña por scrypt). Ni con el fichero en la
+  mano se lee sin la contraseña. Y si pierdes la contraseña, no hay
+  recuperación: no está guardada en ninguna parte, eso es justo lo que la
+  hace segura.
+
+  EL SERVIDOR escucha en 127.0.0.1, que es solo tu ordenador. Nadie de tu
+  red entra. Si algún día lo abres a la red (host="0.0.0.0"), nada de
+  esto está pensado para eso: no hay HTTPS, ni usuarios, ni límites de
+  intentos.
+
+  LAS COPIAS DE SEGURIDAD que descarga la Mesa van en claro. Ahora están
+  tapadas para git, pero si las mandas por correo o las subes a la nube,
+  van tus datos ahí dentro. Trátalas como lo que son.
 
 
 EL SELECTOR DE POTENCIA

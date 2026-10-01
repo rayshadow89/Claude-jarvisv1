@@ -1,7 +1,35 @@
+# ---------------------------------------------------------------------------
+# Lo que NUNCA debe subirse a GitHub
+# ---------------------------------------------------------------------------
+# Este repositorio es público: cualquiera puede leer lo que haya aquí dentro.
+# El código no tiene ningún problema en ser público — está hecho para eso.
+# Lo que no puede salir de tu ordenador es TU información y TUS claves.
+
+# --- Tus claves ---
+# La clave de la API va en un fichero .env que se queda en tu ordenador.
+# .env.example sí se sube: es la plantilla vacía, sin ningún valor dentro.
+.env
+.env.*
+!.env.example
+
+# --- Tus datos ---
+# La base de datos: peso, rutina, gastos, deudas, notas y la cartera.
+joker.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Las copias de seguridad que descargas desde la Mesa. Llevan tu peso, tus
+# gastos, tus deudas y tus notas EN CLARO. Si guardas una en esta carpeta,
+# git no la verá y no podrás subirla por error.
+joker-copia-*.json
+*.backup
+*.bak
+
+# --- Basura ---
 __pycache__/
 *.pyc
-.env
-
-# Base de datos local: contiene datos personales (peso, salud...).
-# NUNCA debe subirse al repositorio.
-joker.db
+*.pyo
+*.log
+.DS_Store
+Thumbs.db
