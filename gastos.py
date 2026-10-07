@@ -23,6 +23,13 @@ Los datos se guardan en la misma base local que el gimnasio (joker.db), que
 no se sube a GitHub. Son tus cuentas: no salen de tu ordenador.
 """
 
+# ---------------------------------------------------------------------------
+# Copyright (c) 2026 Roberto (github.com/rayshadow89)
+# Todos los derechos reservados. Software propietario de código visible:
+# puedes leerlo y estudiarlo; usarlo, copiarlo o modificarlo necesita
+# permiso por escrito. Los términos completos están en LICENSE.
+# ---------------------------------------------------------------------------
+
 from __future__ import annotations
 
 import json

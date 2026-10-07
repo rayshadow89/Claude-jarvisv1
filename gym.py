@@ -20,6 +20,13 @@ AVISO: esto es orientativo, basado en fórmulas estándar. No es consejo
 médico. Si tienes alguna condición de salud, habla con un profesional.
 """
 
+# ---------------------------------------------------------------------------
+# Copyright (c) 2026 Roberto (github.com/rayshadow89)
+# Todos los derechos reservados. Software propietario de código visible:
+# puedes leerlo y estudiarlo; usarlo, copiarlo o modificarlo necesita
+# permiso por escrito. Los términos completos están en LICENSE.
+# ---------------------------------------------------------------------------
+
 from __future__ import annotations
 
 from collections import Counter

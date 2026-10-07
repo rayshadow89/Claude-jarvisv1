@@ -1,0 +1,181 @@
+LICENCIA DE JOKER
+Copyright (c) 2026 Roberto (github.com/rayshadow89)
+Todos los derechos reservados. / All rights reserved.
+
+
+================================================================================
+CASTELLANO
+================================================================================
+
+Este programa es software propietario de código visible. El código fuente está
+publicado para que cualquiera pueda LEERLO. Publicarlo no lo convierte en
+software libre ni en código abierto, y no concede ningún derecho de uso.
+
+
+1. LO QUE SÍ PUEDES HACER, sin pedir permiso
+
+   a) Leer el código fuente.
+   b) Estudiarlo y aprender de él.
+   c) Evaluarlo: por ejemplo, si estás valorando el trabajo del autor.
+   d) Citarlo en un comentario, un artículo o una reseña, siempre indicando
+      quién es el autor y de dónde viene.
+
+
+2. LO QUE NO PUEDES HACER sin permiso escrito y previo del autor
+
+   Queda prohibido, sobre la totalidad o sobre cualquier parte de este
+   programa, incluido un único fichero o fragmento:
+
+   a) Usarlo o ejecutarlo, con o sin ánimo de lucro.
+   b) Copiarlo o reproducirlo.
+   c) Modificarlo, adaptarlo, traducirlo o crear obras derivadas.
+   d) Distribuirlo, publicarlo, comunicarlo públicamente o ponerlo a
+      disposición de terceros.
+   e) Sublicenciarlo, venderlo, alquilarlo o cederlo.
+   f) Incorporarlo a otro programa, producto o servicio, sea propietario,
+      libre o de código abierto.
+   g) Usarlo como material de entrenamiento para modelos de aprendizaje
+      automático.
+   h) Retirar, ocultar o alterar los avisos de autoría y de copyright.
+
+
+3. CÓMO PEDIR PERMISO
+
+   Abriendo una incidencia (issue) en el repositorio, o escribiendo al autor
+   a través de su perfil de GitHub:
+
+       https://github.com/rayshadow89
+
+   Las peticiones razonadas se contestan. Un "no" por defecto no significa
+   que la respuesta tenga que ser no.
+
+
+4. SOBRE LAS BIFURCACIONES (FORKS) DE GITHUB
+
+   Mientras este repositorio sea público, los Términos de Servicio de GitHub
+   conceden a cualquier usuario de GitHub el derecho a verlo y a bifurcarlo
+   dentro de la propia plataforma. El autor no puede desactivar esa función
+   en un repositorio público de cuenta personal, y no renuncia a nada por
+   ello.
+
+   Bifurcar NO es tener permiso. Una bifurcación sigue sujeta a esta
+   licencia: no autoriza a usar el código, ni a modificarlo, ni a
+   redistribuirlo fuera de GitHub, ni a presentarlo como obra propia.
+
+
+5. LO QUE ESTA LICENCIA NO PROTEGE
+
+   Se dice aquí para que no haya malentendidos. Esta licencia cubre el
+   CÓDIGO tal y como está escrito: su forma, su estructura, su redacción.
+
+   NO cubre las ideas, los conceptos, los métodos ni los principios en que
+   se basa el programa. Eso no es protegible por derecho de autor, y la ley
+   española lo dice expresamente para el software (Real Decreto Legislativo
+   1/1996, artículo 96.4). Cualquiera puede escribir su propio asistente
+   personal con las mismas ideas, siempre que lo escriba él.
+
+
+6. SIN GARANTÍA
+
+   ESTE PROGRAMA SE OFRECE "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA
+   NI IMPLÍCITA, INCLUIDAS SIN LIMITACIÓN LAS GARANTÍAS DE COMERCIABILIDAD,
+   DE IDONEIDAD PARA UN PROPÓSITO DETERMINADO Y DE NO INFRACCIÓN. EN NINGÚN
+   CASO EL AUTOR RESPONDERÁ DE NINGUNA RECLAMACIÓN, DAÑO U OTRA
+   RESPONSABILIDAD, SEA EN UNA ACCIÓN CONTRACTUAL, EXTRACONTRACTUAL O DE
+   OTRA ÍNDOLE, DERIVADA DE O RELACIONADA CON ESTE PROGRAMA O CON SU USO.
+
+   En particular: los cálculos de nutrición, entrenamiento, gastos, deudas e
+   inversiones son orientativos. No son consejo médico, fiscal ni financiero.
+
+
+7. LEY APLICABLE
+
+   Esta licencia se rige por la legislación española.
+
+
+================================================================================
+ENGLISH
+================================================================================
+
+This is proprietary, source-available software. The source code is published
+so that anyone may READ it. Publication does not make it free or open-source
+software, and grants no right of use.
+
+
+1. YOU MAY, without asking
+
+   a) Read the source code.
+   b) Study it and learn from it.
+   c) Evaluate it -- for example, when assessing the author's work.
+   d) Quote it in a comment, article or review, with attribution to the
+      author and a reference to its origin.
+
+
+2. YOU MAY NOT, without the author's prior written permission
+
+   The following are prohibited with respect to the whole or any part of this
+   software, including any single file or fragment:
+
+   a) Using or running it, commercially or otherwise.
+   b) Copying or reproducing it.
+   c) Modifying, adapting, translating it, or creating derivative works.
+   d) Distributing, publishing, or otherwise making it available to others.
+   e) Sublicensing, selling, renting or assigning it.
+   f) Incorporating it into any other program, product or service, whether
+      proprietary, free or open-source.
+   g) Using it as training material for machine-learning models.
+   h) Removing, obscuring or altering authorship and copyright notices.
+
+
+3. REQUESTING PERMISSION
+
+   Open an issue on the repository, or contact the author through his GitHub
+   profile:
+
+       https://github.com/rayshadow89
+
+   Reasoned requests get an answer. A default "no" does not mean the answer
+   has to be no.
+
+
+4. ABOUT GITHUB FORKS
+
+   While this repository is public, the GitHub Terms of Service grant every
+   GitHub user the right to view and fork it within the platform itself. The
+   author cannot disable that function on a public personal repository, and
+   waives nothing by its existence.
+
+   Forking is NOT permission. A fork remains subject to this licence: it
+   authorises no use, no modification, no redistribution outside GitHub, and
+   no presentation of the work as one's own.
+
+
+5. WHAT THIS LICENCE DOES NOT COVER
+
+   Stated plainly to avoid misunderstanding. This licence covers the CODE as
+   written: its form, its structure, its expression.
+
+   It does NOT cover the ideas, concepts, methods or principles underlying
+   the program. Those are not protectable by copyright, and Spanish law says
+   so expressly for software (Royal Legislative Decree 1/1996, article 96.4).
+   Anyone may write their own personal assistant on the same ideas, provided
+   they write it themselves.
+
+
+6. NO WARRANTY
+
+   THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+   NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OF IT.
+
+   In particular: the nutrition, training, expense, debt and investment
+   calculations are indicative only. They are not medical, tax or financial
+   advice.
+
+
+7. GOVERNING LAW
+
+   This licence is governed by the laws of Spain.

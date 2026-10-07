@@ -14,6 +14,13 @@ Dos reglas:
   dice sin enseñar ni una cifra: para eso se cifró.
 """
 
+# ---------------------------------------------------------------------------
+# Copyright (c) 2026 Roberto (github.com/rayshadow89)
+# Todos los derechos reservados. Software propietario de código visible:
+# puedes leerlo y estudiarlo; usarlo, copiarlo o modificarlo necesita
+# permiso por escrito. Los términos completos están en LICENSE.
+# ---------------------------------------------------------------------------
+
 from __future__ import annotations
 
 from datetime import date

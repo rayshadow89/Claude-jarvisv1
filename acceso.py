@@ -16,6 +16,13 @@ inversiones sí va cifrada de verdad, porque ahí sí compensa escribir una
 contraseña larga cada vez. Para mirar cuántas series tocan hoy, no.
 """
 
+# ---------------------------------------------------------------------------
+# Copyright (c) 2026 Roberto (github.com/rayshadow89)
+# Todos los derechos reservados. Software propietario de código visible:
+# puedes leerlo y estudiarlo; usarlo, copiarlo o modificarlo necesita
+# permiso por escrito. Los términos completos están en LICENSE.
+# ---------------------------------------------------------------------------
+
 from __future__ import annotations
 
 import hashlib
