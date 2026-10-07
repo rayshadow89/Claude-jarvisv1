@@ -29,6 +29,13 @@ Ejecutar:
   python joker.py
 """
 
+# ---------------------------------------------------------------------------
+# Copyright (c) 2026 Roberto (github.com/rayshadow89)
+# Todos los derechos reservados. Software propietario de código visible:
+# puedes leerlo y estudiarlo; usarlo, copiarlo o modificarlo necesita
+# permiso por escrito. Los términos completos están en LICENSE.
+# ---------------------------------------------------------------------------
+
 from __future__ import annotations
 
 import json

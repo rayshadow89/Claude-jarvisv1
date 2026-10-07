@@ -36,6 +36,13 @@ mirar cómo va tu cartera sirve de sobra; para operar al segundo, no. La página
 lo dice, en vez de dejar que parezca un terminal de bolsa.
 """
 
+# ---------------------------------------------------------------------------
+# Copyright (c) 2026 Roberto (github.com/rayshadow89)
+# Todos los derechos reservados. Software propietario de código visible:
+# puedes leerlo y estudiarlo; usarlo, copiarlo o modificarlo necesita
+# permiso por escrito. Los términos completos están en LICENSE.
+# ---------------------------------------------------------------------------
+
 from __future__ import annotations
 
 import base64
